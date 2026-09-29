@@ -52,6 +52,7 @@ import (
 	"github.com/cloudbase/garm/workers/entity"
 	metricsWorker "github.com/cloudbase/garm/workers/metrics"
 	"github.com/cloudbase/garm/workers/provider"
+	"github.com/cloudbase/garm/workers/usage"
 	"github.com/cloudbase/garm/workers/websocket/agent"
 	wsMetrics "github.com/cloudbase/garm/workers/websocket/metrics"
 )
@@ -72,6 +73,7 @@ type serverComponents struct {
 	metricsWorker  *metricsWorker.Worker
 	providerWorker *provider.Provider
 	entityCtrl     *entity.Controller
+	usageWorker    *usage.Worker
 	runner         *runner.Runner
 }
 
@@ -193,6 +195,12 @@ func initInfrastructure(ctx context.Context, cfg *config.Config, hub *websocket.
 		return nil, fmt.Errorf("starting provider worker: %w", err)
 	}
 
+	// The usage worker prices instance usage records through the providers.
+	usageWorker := usage.NewWorker(ctx, db, loadedProviders)
+	if err := usageWorker.Start(); err != nil {
+		return nil, fmt.Errorf("starting usage worker: %w", err)
+	}
+
 	entityCtrl, err := entity.NewController(ctx, db, loadedProviders)
 	if err != nil {
 		return nil, fmt.Errorf("creating entity controller: %w", err)
@@ -215,6 +223,7 @@ func initInfrastructure(ctx context.Context, cfg *config.Config, hub *websocket.
 		metricsWorker:  mWorker,
 		providerWorker: providerWorker,
 		entityCtrl:     entityCtrl,
+		usageWorker:    usageWorker,
 		runner:         rnr,
 	}, nil
 }
@@ -370,6 +379,10 @@ func shutdownComponents(comp *serverComponents) {
 
 	if err := comp.cacheWorker.Stop(); err != nil {
 		slog.With(slog.Any("error", err)).Error("failed to stop cache worker")
+	}
+
+	if err := comp.usageWorker.Stop(); err != nil {
+		slog.With(slog.Any("error", err)).Error("failed to stop usage worker")
 	}
 }
 

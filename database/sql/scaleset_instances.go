@@ -57,9 +57,14 @@ func (s *sqlDatabase) CreateScaleSetInstance(_ context.Context, scaleSetID uint,
 		JitConfiguration:  secret,
 		AgentID:           param.AgentID,
 	}
-	q := s.conn.Create(&newInstance)
-	if q.Error != nil {
-		return params.Instance{}, fmt.Errorf("error creating instance: %w", q.Error)
+	err = s.conn.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&newInstance).Error; err != nil {
+			return err
+		}
+		return s.createInstanceUsage(tx, newInstance, scaleSetUsageSource(scaleSet))
+	})
+	if err != nil {
+		return params.Instance{}, fmt.Errorf("error creating instance: %w", err)
 	}
 
 	return s.sqlToParamsInstance(newInstance)

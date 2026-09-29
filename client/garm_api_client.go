@@ -30,6 +30,7 @@ import (
 	"github.com/cloudbase/garm/client/scalesets"
 	"github.com/cloudbase/garm/client/templates"
 	"github.com/cloudbase/garm/client/tools"
+	"github.com/cloudbase/garm/client/usage"
 )
 
 // Default garm API HTTP client.
@@ -94,6 +95,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *GarmAPI {
 	cli.Scalesets = scalesets.New(transport, formats)
 	cli.Templates = templates.New(transport, formats)
 	cli.Tools = tools.New(transport, formats)
+	cli.Usage = usage.New(transport, formats)
 	return cli
 }
 
@@ -178,6 +180,8 @@ type GarmAPI struct {
 
 	Tools tools.ClientService
 
+	Usage usage.ClientService
+
 	Transport runtime.ClientTransport
 }
 
@@ -204,4 +208,5 @@ func (c *GarmAPI) SetTransport(transport runtime.ClientTransport) {
 	c.Scalesets.SetTransport(transport)
 	c.Templates.SetTransport(transport)
 	c.Tools.SetTransport(transport)
+	c.Usage.SetTransport(transport)
 }

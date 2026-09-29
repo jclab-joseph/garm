@@ -110,3 +110,5 @@ require (
 	golang.org/x/text v0.42.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 )
+
+replace github.com/cloudbase/garm-provider-common => ../provider-common

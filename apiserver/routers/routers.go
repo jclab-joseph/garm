@@ -242,6 +242,16 @@ func NewAPIRouter(han *controllers.APIController, authMiddleware, initMiddleware
 	apiRouter.Handle("/metrics-token/", http.HandlerFunc(han.MetricsTokenHandler)).Methods("GET", "OPTIONS")
 	apiRouter.Handle("/metrics-token", http.HandlerFunc(han.MetricsTokenHandler)).Methods("GET", "OPTIONS")
 
+	///////////
+	// Usage //
+	///////////
+	// List instance runs and their cost
+	apiRouter.Handle("/usage/instances/", http.HandlerFunc(han.ListInstanceUsageHandler)).Methods("GET", "OPTIONS")
+	apiRouter.Handle("/usage/instances", http.HandlerFunc(han.ListInstanceUsageHandler)).Methods("GET", "OPTIONS")
+	// Cost summary of a date range
+	apiRouter.Handle("/usage/summary/", http.HandlerFunc(han.GetUsageSummaryHandler)).Methods("GET", "OPTIONS")
+	apiRouter.Handle("/usage/summary", http.HandlerFunc(han.GetUsageSummaryHandler)).Methods("GET", "OPTIONS")
+
 	/////////////
 	// Objects //
 	/////////////

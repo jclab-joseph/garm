@@ -16,6 +16,7 @@ package common
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -48,6 +49,11 @@ const (
 	GetExtraSpecsJSONSchemaCommand       ExecutionCommand = "GetExtraSpecsJSONSchema"
 )
 
+// GetInstancePriceCommand is optional for providers (see PriceEstimator). It
+// reads bootstrap params from stdin, like CreateInstance, and prints an
+// InstancePrice.
+const GetInstancePriceCommand ExecutionCommand = "GetInstancePrice"
+
 const (
 	// ExitCodeNotFound is an exit code that indicates a Not Found error
 	ExitCodeNotFound int = 30
@@ -57,9 +63,9 @@ const (
 
 func GetBoostrapParamsFromStdin(c ExecutionCommand) (params.BootstrapInstance, error) {
 	var bootstrapParams params.BootstrapInstance
-	if c == CreateInstanceCommand {
+	if c == CreateInstanceCommand || c == GetInstancePriceCommand {
 		if isatty.IsTerminal(os.Stdin.Fd()) || isatty.IsCygwinTerminal(os.Stdin.Fd()) {
-			return params.BootstrapInstance{}, fmt.Errorf("%s requires data passed into stdin", CreateInstanceCommand)
+			return params.BootstrapInstance{}, fmt.Errorf("%s requires data passed into stdin", c)
 		}
 
 		var data bytes.Buffer
@@ -68,7 +74,7 @@ func GetBoostrapParamsFromStdin(c ExecutionCommand) (params.BootstrapInstance, e
 		}
 
 		if data.Len() == 0 {
-			return params.BootstrapInstance{}, fmt.Errorf("%s requires data passed into stdin", CreateInstanceCommand)
+			return params.BootstrapInstance{}, fmt.Errorf("%s requires data passed into stdin", c)
 		}
 
 		if err := json.Unmarshal(data.Bytes(), &bootstrapParams); err != nil {
@@ -96,4 +102,30 @@ func ResolveErrorToExitCode(err error) int {
 		return 1
 	}
 	return 0
+}
+
+// ValidatePriceParams checks the bootstrap params of a GetInstancePrice command.
+func ValidatePriceParams(bootstrapParams params.BootstrapInstance) error {
+	if bootstrapParams.Flavor == "" {
+		return fmt.Errorf("missing flavor in bootstrap params")
+	}
+	return nil
+}
+
+// RunGetInstancePrice runs the GetInstancePrice command against provider,
+// which must implement PriceEstimator, and returns the price as JSON.
+func RunGetInstancePrice(ctx context.Context, provider any, bootstrapParams params.BootstrapInstance) (string, error) {
+	estimator, ok := provider.(PriceEstimator)
+	if !ok {
+		return "", fmt.Errorf("provider does not support %s", GetInstancePriceCommand)
+	}
+	price, err := estimator.GetInstancePrice(ctx, bootstrapParams)
+	if err != nil {
+		return "", fmt.Errorf("failed to get instance price: %w", err)
+	}
+	asJs, err := json.Marshal(price)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
+	}
+	return string(asJs), nil
 }

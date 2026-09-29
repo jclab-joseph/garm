@@ -491,3 +491,24 @@ definitions:
         import:
             package: github.com/cloudbase/garm/params
             alias: garm_params
+  InstanceUsage:
+    type: object
+    x-go-type:
+        type: InstanceUsage
+        import:
+            package: github.com/cloudbase/garm/params
+            alias: garm_params
+  InstanceUsagePaginatedResponse:
+    type: object
+    x-go-type:
+        type: InstanceUsagePaginatedResponse
+        import:
+            package: github.com/cloudbase/garm/params
+            alias: garm_params
+  UsageSummary:
+    type: object
+    x-go-type:
+        type: UsageSummary
+        import:
+            package: github.com/cloudbase/garm/params
+            alias: garm_params

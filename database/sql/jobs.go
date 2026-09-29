@@ -377,6 +377,10 @@ func (s *sqlDatabase) CreateOrUpdateJob(ctx context.Context, job params.Job) (pa
 			}
 		}
 
+		if err := s.recordInstanceUsageJob(tx, workflowJob); err != nil {
+			return err
+		}
+
 		var err error
 		asParams, err = sqlWorkflowJobToParamsJob(workflowJob)
 		if err != nil {

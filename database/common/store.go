@@ -220,6 +220,18 @@ type FileObjectStore interface {
 	OpenFileObjectContent(ctx context.Context, objID uint) (io.ReadCloser, error)
 }
 
+// InstanceUsageStore keeps the usage (run time and estimated price) of
+// instances, which outlives the instances.
+type InstanceUsageStore interface {
+	ListInstanceUsage(ctx context.Context, filter params.InstanceUsageFilter, page, pageSize uint64) (params.InstanceUsagePaginatedResponse, error)
+	ListAllInstanceUsage(ctx context.Context, filter params.InstanceUsageFilter) ([]params.InstanceUsage, error)
+	// ListInstanceUsagePendingPrice lists records that need a price lookup:
+	// never looked up, or failed before retryErrorsBefore.
+	ListInstanceUsagePendingPrice(ctx context.Context, retryErrorsBefore time.Time, limit int) ([]params.InstanceUsage, error)
+	SetInstanceUsagePrice(ctx context.Context, usageID string, param params.SetInstanceUsagePriceParams) error
+	CloseOrphanedInstanceUsage(ctx context.Context) (int64, error)
+}
+
 //go:generate go run github.com/vektra/mockery/v2@latest
 type Store interface {
 	RepoStore
@@ -241,6 +253,7 @@ type Store interface {
 	TemplateStore
 	ProxyStore
 	FileObjectStore
+	InstanceUsageStore
 
 	ControllerInfo() (params.ControllerInfo, error)
 	InitController() (params.ControllerInfo, error)

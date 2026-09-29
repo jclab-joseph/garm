@@ -2217,6 +2217,309 @@ export interface InstanceMetadata {
     'runner_tools'?: RunnerApplicationDownload;
 }
 /**
+ * InstancePrice is the estimated list price of running one instance built from a set of bootstrap params (flavor, image and extra specs) for one hour. It is an estimate: discounts, taxes and network egress are not included.
+ * @export
+ * @interface InstancePrice
+ */
+export interface InstancePrice {
+    /**
+     * Components is the breakdown of HourlyPrice.
+     * @type {Array<InstancePriceComponent>}
+     * @memberof InstancePrice
+     */
+    'components'?: Array<InstancePriceComponent>;
+    /**
+     * Currency is the ISO 4217 code of all prices, e.g. USD.
+     * @type {string}
+     * @memberof InstancePrice
+     */
+    'currency'?: string;
+    /**
+     * EffectiveTime is when the (newest) list prices used took effect.
+     * @type {string}
+     * @memberof InstancePrice
+     */
+    'effective_time'?: string;
+    /**
+     * HourlyPrice is the sum of the hourly price of all components.
+     * @type {number}
+     * @memberof InstancePrice
+     */
+    'hourly_price'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstancePrice
+     */
+    'provisioning_model'?: string;
+    /**
+     * Region is the provider region the price applies to.
+     * @type {string}
+     * @memberof InstancePrice
+     */
+    'region'?: string;
+    /**
+     * Warnings lists resources that are not included in HourlyPrice because the provider could not price them.
+     * @type {Array<string>}
+     * @memberof InstancePrice
+     */
+    'warnings'?: Array<string>;
+}
+/**
+ * 
+ * @export
+ * @interface InstancePriceComponent
+ */
+export interface InstancePriceComponent {
+    /**
+     * Description is a human readable description, e.g. the provider SKU name.
+     * @type {string}
+     * @memberof InstancePriceComponent
+     */
+    'description'?: string;
+    /**
+     * HourlyPrice is the price of Quantity for one hour.
+     * @type {number}
+     * @memberof InstancePriceComponent
+     */
+    'hourly_price'?: number;
+    /**
+     * Name identifies the resource, e.g. vcpu, memory, local_ssd, boot_disk.
+     * @type {string}
+     * @memberof InstancePriceComponent
+     */
+    'name'?: string;
+    /**
+     * Quantity is the billed amount of the resource, in Unit.
+     * @type {number}
+     * @memberof InstancePriceComponent
+     */
+    'quantity'?: number;
+    /**
+     * SKU is the provider\'s identifier of the price used.
+     * @type {string}
+     * @memberof InstancePriceComponent
+     */
+    'sku'?: string;
+    /**
+     * Unit is the unit of Quantity, e.g. vCPU, GiB, IOPS.
+     * @type {string}
+     * @memberof InstancePriceComponent
+     */
+    'unit'?: string;
+}
+/**
+ * with its estimated price. Unlike instances, usage records are kept after the instance is deleted.
+ * @export
+ * @interface InstanceUsage
+ */
+export interface InstanceUsage {
+    /**
+     * BilledSeconds is the billed run time so far.
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'billed_seconds'?: number;
+    /**
+     * Cost is the estimated cost so far. Zero while the price is unknown.
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'cost'?: number;
+    /**
+     * CreatedAt is when GARM created the instance record.
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'created_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'currency'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'end_reason'?: string;
+    /**
+     * EndedAt is when the instance was removed from the provider. Unset while the instance exists.
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'ended_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'entity_id'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'entity_name'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'entity_type'?: string;
+    /**
+     * ExtraSpecs are the pool (or scale set) extra specs when the instance was created; the price is looked up with them.
+     * @type {object}
+     * @memberof InstanceUsage
+     */
+    'extra_specs'?: object;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'flavor'?: string;
+    /**
+     * HourlyPrice is the estimated price per hour, looked up when the instance was created. Unset until PriceStatus is ok.
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'hourly_price'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'id'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'image'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'instance_id'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'instance_name'?: string;
+    /**
+     * The last job that ran on the instance, if any.
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'job_id'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'job_name'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'job_repository'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'os_arch'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'os_type'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'pool_id'?: string;
+    /**
+     * 
+     * @type {InstancePrice}
+     * @memberof InstanceUsage
+     */
+    'price'?: InstancePrice;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'price_error'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'price_status'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'priced_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'provider_id'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'provider_name'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'provisioning_model'?: string;
+    /**
+     * RangeBilledSeconds and RangeCost are the parts of BilledSeconds and Cost that fall in the requested date range.
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'range_billed_seconds'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'range_cost'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'scale_set_id'?: number;
+    /**
+     * StartedAt is when the provider reported the instance as running. Billing starts here. Instances that never ran have no StartedAt.
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'started_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'workflow_run_url'?: string;
+}
+/**
  * JWTResponse holds the JWT token returned as a result of a successful auth
  * @export
  * @interface JWTResponse
@@ -3930,6 +4233,146 @@ export interface UpdateTemplateParams {
      * @memberof UpdateTemplateParams
      */
     'name'?: string;
+}
+/**
+ * 
+ * @export
+ * @interface UsageGroup
+ */
+export interface UsageGroup {
+    /**
+     * 
+     * @type {number}
+     * @memberof UsageGroup
+     */
+    'billed_seconds'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof UsageGroup
+     */
+    'cost'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof UsageGroup
+     */
+    'instance_count'?: number;
+    /**
+     * Key identifies the group (e.g. a pool ID, a flavor, a day).
+     * @type {string}
+     * @memberof UsageGroup
+     */
+    'key'?: string;
+    /**
+     * Label is a human readable name of the group, when Key is an ID.
+     * @type {string}
+     * @memberof UsageGroup
+     */
+    'label'?: string;
+}
+/**
+ * UsageSummary is the estimated cost of all instances in a date range. Costs of instances that run across the range boundaries are prorated.
+ * @export
+ * @interface UsageSummary
+ */
+export interface UsageSummary {
+    /**
+     * 
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'billed_seconds'?: number;
+    /**
+     * ByDay splits the costs by calendar day in TimeZone.
+     * @type {Array<UsageGroup>}
+     * @memberof UsageSummary
+     */
+    'by_day'?: Array<UsageGroup>;
+    /**
+     * 
+     * @type {Array<UsageGroup>}
+     * @memberof UsageSummary
+     */
+    'by_entity'?: Array<UsageGroup>;
+    /**
+     * 
+     * @type {Array<UsageGroup>}
+     * @memberof UsageSummary
+     */
+    'by_flavor'?: Array<UsageGroup>;
+    /**
+     * 
+     * @type {Array<UsageGroup>}
+     * @memberof UsageSummary
+     */
+    'by_pool'?: Array<UsageGroup>;
+    /**
+     * 
+     * @type {Array<UsageGroup>}
+     * @memberof UsageSummary
+     */
+    'by_provisioning_model'?: Array<UsageGroup>;
+    /**
+     * 
+     * @type {string}
+     * @memberof UsageSummary
+     */
+    'currency'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UsageSummary
+     */
+    'end'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'instance_count'?: number;
+    /**
+     * RunningCost and RunningCount cover instances that still exist.
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'running_cost'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'running_count'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof UsageSummary
+     */
+    'start'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof UsageSummary
+     */
+    'time_zone'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'total_cost'?: number;
+    /**
+     * UnpricedCount counts instances whose price is not known (yet); their cost is not included in the totals.
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'unpriced_count'?: number;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof UsageSummary
+     */
+    'warnings'?: Array<string>;
 }
 /**
  * Users holds information about a particular user
@@ -16612,6 +17055,323 @@ export class ToolsApi extends BaseAPI {
      */
     public uploadGARMAgentTool(options?: RawAxiosRequestConfig) {
         return ToolsApiFp(this.configuration).uploadGARMAgentTool(options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * UsageApi - axios parameter creator
+ * @export
+ */
+export const UsageApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * Get the estimated cost of all instances in a date range. The cost of instances that run across the range boundaries is prorated.
+         * @param {string} start Start of the date range (RFC 3339, inclusive).
+         * @param {string} end End of the date range (RFC 3339, exclusive). At most 366 days after start.
+         * @param {string} [timeZone] IANA time zone of the daily breakdown (default UTC).
+         * @param {string} [poolID] Only include instances of this pool.
+         * @param {number} [scaleSetID] Only include instances of this scale set.
+         * @param {string} [entityID] Only include instances of this repository, organization or enterprise.
+         * @param {string} [providerName] Only include instances of this provider.
+         * @param {string} [provisioningModel] Only include instances with this provisioning model (standard or spot).
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUsageSummary: async (start: string, end: string, timeZone?: string, poolID?: string, scaleSetID?: number, entityID?: string, providerName?: string, provisioningModel?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'start' is not null or undefined
+            assertParamExists('getUsageSummary', 'start', start)
+            // verify required parameter 'end' is not null or undefined
+            assertParamExists('getUsageSummary', 'end', end)
+            const localVarPath = `/usage/summary`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication Bearer required
+            await setApiKeyToObject(localVarHeaderParameter, "Authorization", configuration)
+
+            if (start !== undefined) {
+                localVarQueryParameter['start'] = start;
+            }
+
+            if (end !== undefined) {
+                localVarQueryParameter['end'] = end;
+            }
+
+            if (timeZone !== undefined) {
+                localVarQueryParameter['timeZone'] = timeZone;
+            }
+
+            if (poolID !== undefined) {
+                localVarQueryParameter['poolID'] = poolID;
+            }
+
+            if (scaleSetID !== undefined) {
+                localVarQueryParameter['scaleSetID'] = scaleSetID;
+            }
+
+            if (entityID !== undefined) {
+                localVarQueryParameter['entityID'] = entityID;
+            }
+
+            if (providerName !== undefined) {
+                localVarQueryParameter['providerName'] = providerName;
+            }
+
+            if (provisioningModel !== undefined) {
+                localVarQueryParameter['provisioningModel'] = provisioningModel;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * List instance runs and their estimated cost, newest first. Runs that overlap the date range are listed; range_cost is the part of the cost that falls in the range.
+         * @param {string} [start] Start of the date range (RFC 3339, inclusive).
+         * @param {string} [end] End of the date range (RFC 3339, exclusive).
+         * @param {string} [poolID] Only list instances of this pool.
+         * @param {number} [scaleSetID] Only list instances of this scale set.
+         * @param {string} [entityID] Only list instances of this repository, organization or enterprise.
+         * @param {string} [instanceName] Only list runs of the instance with this name.
+         * @param {string} [providerName] Only list instances of this provider.
+         * @param {string} [provisioningModel] Only list instances with this provisioning model (standard or spot).
+         * @param {boolean} [runningOnly] Only list instances that still exist.
+         * @param {number} [page] The page at which to list.
+         * @param {number} [pageSize] Number of items per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listInstanceUsage: async (start?: string, end?: string, poolID?: string, scaleSetID?: number, entityID?: string, instanceName?: string, providerName?: string, provisioningModel?: string, runningOnly?: boolean, page?: number, pageSize?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/usage/instances`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication Bearer required
+            await setApiKeyToObject(localVarHeaderParameter, "Authorization", configuration)
+
+            if (start !== undefined) {
+                localVarQueryParameter['start'] = start;
+            }
+
+            if (end !== undefined) {
+                localVarQueryParameter['end'] = end;
+            }
+
+            if (poolID !== undefined) {
+                localVarQueryParameter['poolID'] = poolID;
+            }
+
+            if (scaleSetID !== undefined) {
+                localVarQueryParameter['scaleSetID'] = scaleSetID;
+            }
+
+            if (entityID !== undefined) {
+                localVarQueryParameter['entityID'] = entityID;
+            }
+
+            if (instanceName !== undefined) {
+                localVarQueryParameter['instanceName'] = instanceName;
+            }
+
+            if (providerName !== undefined) {
+                localVarQueryParameter['providerName'] = providerName;
+            }
+
+            if (provisioningModel !== undefined) {
+                localVarQueryParameter['provisioningModel'] = provisioningModel;
+            }
+
+            if (runningOnly !== undefined) {
+                localVarQueryParameter['runningOnly'] = runningOnly;
+            }
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (pageSize !== undefined) {
+                localVarQueryParameter['pageSize'] = pageSize;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * UsageApi - functional programming interface
+ * @export
+ */
+export const UsageApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = UsageApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * Get the estimated cost of all instances in a date range. The cost of instances that run across the range boundaries is prorated.
+         * @param {string} start Start of the date range (RFC 3339, inclusive).
+         * @param {string} end End of the date range (RFC 3339, exclusive). At most 366 days after start.
+         * @param {string} [timeZone] IANA time zone of the daily breakdown (default UTC).
+         * @param {string} [poolID] Only include instances of this pool.
+         * @param {number} [scaleSetID] Only include instances of this scale set.
+         * @param {string} [entityID] Only include instances of this repository, organization or enterprise.
+         * @param {string} [providerName] Only include instances of this provider.
+         * @param {string} [provisioningModel] Only include instances with this provisioning model (standard or spot).
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getUsageSummary(start: string, end: string, timeZone?: string, poolID?: string, scaleSetID?: number, entityID?: string, providerName?: string, provisioningModel?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UsageSummary>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getUsageSummary(start, end, timeZone, poolID, scaleSetID, entityID, providerName, provisioningModel, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['UsageApi.getUsageSummary']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * List instance runs and their estimated cost, newest first. Runs that overlap the date range are listed; range_cost is the part of the cost that falls in the range.
+         * @param {string} [start] Start of the date range (RFC 3339, inclusive).
+         * @param {string} [end] End of the date range (RFC 3339, exclusive).
+         * @param {string} [poolID] Only list instances of this pool.
+         * @param {number} [scaleSetID] Only list instances of this scale set.
+         * @param {string} [entityID] Only list instances of this repository, organization or enterprise.
+         * @param {string} [instanceName] Only list runs of the instance with this name.
+         * @param {string} [providerName] Only list instances of this provider.
+         * @param {string} [provisioningModel] Only list instances with this provisioning model (standard or spot).
+         * @param {boolean} [runningOnly] Only list instances that still exist.
+         * @param {number} [page] The page at which to list.
+         * @param {number} [pageSize] Number of items per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listInstanceUsage(start?: string, end?: string, poolID?: string, scaleSetID?: number, entityID?: string, instanceName?: string, providerName?: string, provisioningModel?: string, runningOnly?: boolean, page?: number, pageSize?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listInstanceUsage(start, end, poolID, scaleSetID, entityID, instanceName, providerName, provisioningModel, runningOnly, page, pageSize, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['UsageApi.listInstanceUsage']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * UsageApi - factory interface
+ * @export
+ */
+export const UsageApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = UsageApiFp(configuration)
+    return {
+        /**
+         * Get the estimated cost of all instances in a date range. The cost of instances that run across the range boundaries is prorated.
+         * @param {string} start Start of the date range (RFC 3339, inclusive).
+         * @param {string} end End of the date range (RFC 3339, exclusive). At most 366 days after start.
+         * @param {string} [timeZone] IANA time zone of the daily breakdown (default UTC).
+         * @param {string} [poolID] Only include instances of this pool.
+         * @param {number} [scaleSetID] Only include instances of this scale set.
+         * @param {string} [entityID] Only include instances of this repository, organization or enterprise.
+         * @param {string} [providerName] Only include instances of this provider.
+         * @param {string} [provisioningModel] Only include instances with this provisioning model (standard or spot).
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getUsageSummary(start: string, end: string, timeZone?: string, poolID?: string, scaleSetID?: number, entityID?: string, providerName?: string, provisioningModel?: string, options?: RawAxiosRequestConfig): AxiosPromise<UsageSummary> {
+            return localVarFp.getUsageSummary(start, end, timeZone, poolID, scaleSetID, entityID, providerName, provisioningModel, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * List instance runs and their estimated cost, newest first. Runs that overlap the date range are listed; range_cost is the part of the cost that falls in the range.
+         * @param {string} [start] Start of the date range (RFC 3339, inclusive).
+         * @param {string} [end] End of the date range (RFC 3339, exclusive).
+         * @param {string} [poolID] Only list instances of this pool.
+         * @param {number} [scaleSetID] Only list instances of this scale set.
+         * @param {string} [entityID] Only list instances of this repository, organization or enterprise.
+         * @param {string} [instanceName] Only list runs of the instance with this name.
+         * @param {string} [providerName] Only list instances of this provider.
+         * @param {string} [provisioningModel] Only list instances with this provisioning model (standard or spot).
+         * @param {boolean} [runningOnly] Only list instances that still exist.
+         * @param {number} [page] The page at which to list.
+         * @param {number} [pageSize] Number of items per page.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listInstanceUsage(start?: string, end?: string, poolID?: string, scaleSetID?: number, entityID?: string, instanceName?: string, providerName?: string, provisioningModel?: string, runningOnly?: boolean, page?: number, pageSize?: number, options?: RawAxiosRequestConfig): AxiosPromise<object> {
+            return localVarFp.listInstanceUsage(start, end, poolID, scaleSetID, entityID, instanceName, providerName, provisioningModel, runningOnly, page, pageSize, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * UsageApi - object-oriented interface
+ * @export
+ * @class UsageApi
+ * @extends {BaseAPI}
+ */
+export class UsageApi extends BaseAPI {
+    /**
+     * Get the estimated cost of all instances in a date range. The cost of instances that run across the range boundaries is prorated.
+     * @param {string} start Start of the date range (RFC 3339, inclusive).
+     * @param {string} end End of the date range (RFC 3339, exclusive). At most 366 days after start.
+     * @param {string} [timeZone] IANA time zone of the daily breakdown (default UTC).
+     * @param {string} [poolID] Only include instances of this pool.
+     * @param {number} [scaleSetID] Only include instances of this scale set.
+     * @param {string} [entityID] Only include instances of this repository, organization or enterprise.
+     * @param {string} [providerName] Only include instances of this provider.
+     * @param {string} [provisioningModel] Only include instances with this provisioning model (standard or spot).
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof UsageApi
+     */
+    public getUsageSummary(start: string, end: string, timeZone?: string, poolID?: string, scaleSetID?: number, entityID?: string, providerName?: string, provisioningModel?: string, options?: RawAxiosRequestConfig) {
+        return UsageApiFp(this.configuration).getUsageSummary(start, end, timeZone, poolID, scaleSetID, entityID, providerName, provisioningModel, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * List instance runs and their estimated cost, newest first. Runs that overlap the date range are listed; range_cost is the part of the cost that falls in the range.
+     * @param {string} [start] Start of the date range (RFC 3339, inclusive).
+     * @param {string} [end] End of the date range (RFC 3339, exclusive).
+     * @param {string} [poolID] Only list instances of this pool.
+     * @param {number} [scaleSetID] Only list instances of this scale set.
+     * @param {string} [entityID] Only list instances of this repository, organization or enterprise.
+     * @param {string} [instanceName] Only list runs of the instance with this name.
+     * @param {string} [providerName] Only list instances of this provider.
+     * @param {string} [provisioningModel] Only list instances with this provisioning model (standard or spot).
+     * @param {boolean} [runningOnly] Only list instances that still exist.
+     * @param {number} [page] The page at which to list.
+     * @param {number} [pageSize] Number of items per page.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof UsageApi
+     */
+    public listInstanceUsage(start?: string, end?: string, poolID?: string, scaleSetID?: number, entityID?: string, instanceName?: string, providerName?: string, provisioningModel?: string, runningOnly?: boolean, page?: number, pageSize?: number, options?: RawAxiosRequestConfig) {
+        return UsageApiFp(this.configuration).listInstanceUsage(start, end, poolID, scaleSetID, entityID, instanceName, providerName, provisioningModel, runningOnly, page, pageSize, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

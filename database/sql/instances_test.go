@@ -484,6 +484,10 @@ func (s *InstancesTestSuite) TestDeleteInstanceDBRecordNotFoundErr() {
 		WithArgs(instance.ID).
 		WillReturnRows(sqlmock.NewRows([]string{"message", "instance_id"}).AddRow("instance sample message", instance.ID))
 	s.Fixtures.SQLMock.ExpectBegin()
+	// The usage record is closed in the same transaction.
+	s.Fixtures.SQLMock.
+		ExpectExec(regexp.QuoteMeta("UPDATE `instance_usages` SET")).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	s.Fixtures.SQLMock.
 		ExpectExec(regexp.QuoteMeta("DELETE FROM `instances` WHERE `instances`.`id` = ?")).
 		WithArgs(instance.ID).
@@ -521,6 +525,10 @@ func (s *InstancesTestSuite) TestDeleteInstanceDBDeleteErr() {
 		WithArgs(instance.ID).
 		WillReturnRows(sqlmock.NewRows([]string{"message", "instance_id"}).AddRow("instance sample message", instance.ID))
 	s.Fixtures.SQLMock.ExpectBegin()
+	// The usage record is closed in the same transaction.
+	s.Fixtures.SQLMock.
+		ExpectExec(regexp.QuoteMeta("UPDATE `instance_usages` SET")).
+		WillReturnResult(sqlmock.NewResult(0, 1))
 	s.Fixtures.SQLMock.
 		ExpectExec(regexp.QuoteMeta("DELETE FROM `instances` WHERE `instances`.`id` = ?")).
 		WithArgs(instance.ID).

@@ -22,6 +22,7 @@ import (
 	"log/slog"
 	"math"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
@@ -97,7 +98,7 @@ func (s *sqlDatabase) CreateInstance(ctx context.Context, poolID string, param p
 		if q.Error != nil {
 			return fmt.Errorf("error creating instance: %w", q.Error)
 		}
-		return nil
+		return s.createInstanceUsage(tx, newInstance, poolUsageSource(pool))
 	})
 	if err != nil {
 		return params.Instance{}, fmt.Errorf("error creating instance: %w", err)
@@ -202,11 +203,11 @@ func (s *sqlDatabase) DeleteInstance(_ context.Context, poolID string, instanceN
 		}
 	}()
 
-	if q := s.conn.Unscoped().Delete(&instance); q.Error != nil {
-		if errors.Is(q.Error, gorm.ErrRecordNotFound) {
+	if err := s.deleteInstanceAndCloseUsage(instance); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil
 		}
-		return fmt.Errorf("error deleting instance: %w", q.Error)
+		return fmt.Errorf("error deleting instance: %w", err)
 	}
 	return nil
 }
@@ -244,11 +245,11 @@ func (s *sqlDatabase) DeleteInstanceByName(ctx context.Context, instanceName str
 		}
 	}()
 
-	if q := s.conn.Unscoped().Delete(&instance); q.Error != nil {
-		if errors.Is(q.Error, gorm.ErrRecordNotFound) {
+	if err := s.deleteInstanceAndCloseUsage(instance); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil
 		}
-		return fmt.Errorf("error deleting instance: %w", q.Error)
+		return fmt.Errorf("error deleting instance: %w", err)
 	}
 	return nil
 }
@@ -427,6 +428,7 @@ func (s *sqlDatabase) updateInstance(ctx context.Context, instanceName string, p
 		}
 
 		// Apply updates
+		previousStatus := instance.Status
 		if err := s.applyInstanceUpdates(&instance, param); err != nil {
 			return err
 		}
@@ -437,6 +439,10 @@ func (s *sqlDatabase) updateInstance(ctx context.Context, instanceName string, p
 			return fmt.Errorf("error updating instance: %w", result.Error)
 		}
 		rowsAffected = result.RowsAffected
+
+		if err := s.recordInstanceUsageUpdate(tx, instance, previousStatus, time.Now().UTC()); err != nil {
+			return err
+		}
 
 		// Update addresses if provided
 		if len(param.Addresses) > 0 {
@@ -563,4 +569,15 @@ func (s *sqlDatabase) PoolInstanceCount(_ context.Context, poolID string) (int64
 		return 0, fmt.Errorf("error fetching instance count: %w", q.Error)
 	}
 	return cnt, nil
+}
+
+// deleteInstanceAndCloseUsage deletes the instance and closes its usage
+// record in one transaction.
+func (s *sqlDatabase) deleteInstanceAndCloseUsage(instance Instance) error {
+	return s.conn.Transaction(func(tx *gorm.DB) error {
+		if err := s.closeInstanceUsage(tx, instance.ID, time.Now().UTC(), params.UsageEndDeleted); err != nil {
+			return err
+		}
+		return tx.Unscoped().Delete(&instance).Error
+	})
 }

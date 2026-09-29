@@ -1437,9 +1437,218 @@ definitions:
                 $ref: '#/definitions/RunnerApplicationDownload'
         type: object
         x-go-package: github.com/cloudbase/garm/params
+    InstancePrice:
+        description: |-
+            InstancePrice is the estimated list price of running one instance built
+            from a set of bootstrap params (flavor, image and extra specs) for one hour.
+            It is an estimate: discounts, taxes and network egress are not included.
+        properties:
+            components:
+                description: Components is the breakdown of HourlyPrice.
+                items:
+                    $ref: '#/definitions/InstancePriceComponent'
+                type: array
+                x-go-name: Components
+            currency:
+                description: Currency is the ISO 4217 code of all prices, e.g. USD.
+                type: string
+                x-go-name: Currency
+            effective_time:
+                description: EffectiveTime is when the (newest) list prices used took effect.
+                format: date-time
+                type: string
+                x-go-name: EffectiveTime
+            hourly_price:
+                description: HourlyPrice is the sum of the hourly price of all components.
+                format: double
+                type: number
+                x-go-name: HourlyPrice
+            provisioning_model:
+                $ref: '#/definitions/ProvisioningModel'
+            region:
+                description: Region is the provider region the price applies to.
+                type: string
+                x-go-name: Region
+            warnings:
+                description: |-
+                    Warnings lists resources that are not included in HourlyPrice
+                    because the provider could not price them.
+                items:
+                    type: string
+                type: array
+                x-go-name: Warnings
+        type: object
+        x-go-package: github.com/cloudbase/garm-provider-common/params
+    InstancePriceComponent:
+        properties:
+            description:
+                description: Description is a human readable description, e.g. the provider SKU name.
+                type: string
+                x-go-name: Description
+            hourly_price:
+                description: HourlyPrice is the price of Quantity for one hour.
+                format: double
+                type: number
+                x-go-name: HourlyPrice
+            name:
+                description: Name identifies the resource, e.g. vcpu, memory, local_ssd, boot_disk.
+                type: string
+                x-go-name: Name
+            quantity:
+                description: Quantity is the billed amount of the resource, in Unit.
+                format: double
+                type: number
+                x-go-name: Quantity
+            sku:
+                description: SKU is the provider's identifier of the price used.
+                type: string
+                x-go-name: SKU
+            unit:
+                description: Unit is the unit of Quantity, e.g. vCPU, GiB, IOPS.
+                type: string
+                x-go-name: Unit
+        title: InstancePriceComponent is one billed resource of an instance.
+        type: object
+        x-go-package: github.com/cloudbase/garm-provider-common/params
     InstanceStatus:
         type: string
         x-go-package: github.com/cloudbase/garm-provider-common/params
+    InstanceUsage:
+        description: |-
+            with its estimated price. Unlike instances, usage records are kept after
+            the instance is deleted.
+        properties:
+            billed_seconds:
+                description: BilledSeconds is the billed run time so far.
+                format: double
+                type: number
+                x-go-name: BilledSeconds
+            cost:
+                description: Cost is the estimated cost so far. Zero while the price is unknown.
+                format: double
+                type: number
+                x-go-name: Cost
+            created_at:
+                description: CreatedAt is when GARM created the instance record.
+                format: date-time
+                type: string
+                x-go-name: CreatedAt
+            currency:
+                type: string
+                x-go-name: Currency
+            end_reason:
+                $ref: '#/definitions/UsageEndReason'
+            ended_at:
+                description: |-
+                    EndedAt is when the instance was removed from the provider. Unset
+                    while the instance exists.
+                format: date-time
+                type: string
+                x-go-name: EndedAt
+            entity_id:
+                type: string
+                x-go-name: EntityID
+            entity_name:
+                type: string
+                x-go-name: EntityName
+            entity_type:
+                $ref: '#/definitions/ForgeEntityType'
+            extra_specs:
+                description: |-
+                    ExtraSpecs are the pool (or scale set) extra specs when the instance
+                    was created; the price is looked up with them.
+                type: object
+                x-go-name: ExtraSpecs
+            flavor:
+                type: string
+                x-go-name: Flavor
+            hourly_price:
+                description: |-
+                    HourlyPrice is the estimated price per hour, looked up when the
+                    instance was created. Unset until PriceStatus is ok.
+                format: double
+                type: number
+                x-go-name: HourlyPrice
+            id:
+                type: string
+                x-go-name: ID
+            image:
+                type: string
+                x-go-name: Image
+            instance_id:
+                type: string
+                x-go-name: InstanceID
+            instance_name:
+                type: string
+                x-go-name: InstanceName
+            job_id:
+                description: The last job that ran on the instance, if any.
+                format: int64
+                type: integer
+                x-go-name: JobID
+            job_name:
+                type: string
+                x-go-name: JobName
+            job_repository:
+                type: string
+                x-go-name: JobRepository
+            os_arch:
+                $ref: '#/definitions/OSArch'
+            os_type:
+                $ref: '#/definitions/OSType'
+            pool_id:
+                type: string
+                x-go-name: PoolID
+            price:
+                $ref: '#/definitions/InstancePrice'
+            price_error:
+                type: string
+                x-go-name: PriceError
+            price_status:
+                $ref: '#/definitions/UsagePriceStatus'
+            priced_at:
+                format: date-time
+                type: string
+                x-go-name: PricedAt
+            provider_id:
+                type: string
+                x-go-name: ProviderID
+            provider_name:
+                type: string
+                x-go-name: ProviderName
+            provisioning_model:
+                $ref: '#/definitions/ProvisioningModel'
+            range_billed_seconds:
+                description: |-
+                    RangeBilledSeconds and RangeCost are the parts of BilledSeconds and
+                    Cost that fall in the requested date range.
+                format: double
+                type: number
+                x-go-name: RangeBilledSeconds
+            range_cost:
+                format: double
+                type: number
+                x-go-name: RangeCost
+            scale_set_id:
+                format: uint64
+                type: integer
+                x-go-name: ScaleSetID
+            started_at:
+                description: |-
+                    StartedAt is when the provider reported the instance as running.
+                    Billing starts here. Instances that never ran have no StartedAt.
+                format: date-time
+                type: string
+                x-go-name: StartedAt
+            workflow_run_url:
+                type: string
+                x-go-name: WorkflowRunURL
+        title: InstanceUsage records one run of an instance, from creation to deletion,
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
+    InstanceUsagePaginatedResponse:
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
     Instances:
         description: used by swagger client generated code
         items:
@@ -1857,6 +2066,10 @@ definitions:
             $ref: '#/definitions/Provider'
         type: array
         x-go-package: github.com/cloudbase/garm/params
+    ProvisioningModel:
+        title: ProvisioningModel is how the provider bills an instance.
+        type: string
+        x-go-package: github.com/cloudbase/garm-provider-common/params
     Proxies:
         description: used by swagger client generated code
         items:
@@ -2579,6 +2792,119 @@ definitions:
             name:
                 type: string
                 x-go-name: Name
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
+    UsageEndReason:
+        title: UsageEndReason tells why an instance usage record was closed.
+        type: string
+        x-go-package: github.com/cloudbase/garm/params
+    UsageGroup:
+        properties:
+            billed_seconds:
+                format: double
+                type: number
+                x-go-name: BilledSeconds
+            cost:
+                format: double
+                type: number
+                x-go-name: Cost
+            instance_count:
+                format: int64
+                type: integer
+                x-go-name: InstanceCount
+            key:
+                description: Key identifies the group (e.g. a pool ID, a flavor, a day).
+                type: string
+                x-go-name: Key
+            label:
+                description: Label is a human readable name of the group, when Key is an ID.
+                type: string
+                x-go-name: Label
+        title: UsageGroup is the usage of a group of instances in a UsageSummary.
+        type: object
+        x-go-package: github.com/cloudbase/garm/params
+    UsagePriceStatus:
+        title: UsagePriceStatus is the state of the price lookup of an instance usage record.
+        type: string
+        x-go-package: github.com/cloudbase/garm/params
+    UsageSummary:
+        description: |-
+            UsageSummary is the estimated cost of all instances in a date range. Costs
+            of instances that run across the range boundaries are prorated.
+        properties:
+            billed_seconds:
+                format: double
+                type: number
+                x-go-name: BilledSeconds
+            by_day:
+                description: ByDay splits the costs by calendar day in TimeZone.
+                items:
+                    $ref: '#/definitions/UsageGroup'
+                type: array
+                x-go-name: ByDay
+            by_entity:
+                items:
+                    $ref: '#/definitions/UsageGroup'
+                type: array
+                x-go-name: ByEntity
+            by_flavor:
+                items:
+                    $ref: '#/definitions/UsageGroup'
+                type: array
+                x-go-name: ByFlavor
+            by_pool:
+                items:
+                    $ref: '#/definitions/UsageGroup'
+                type: array
+                x-go-name: ByPool
+            by_provisioning_model:
+                items:
+                    $ref: '#/definitions/UsageGroup'
+                type: array
+                x-go-name: ByProvisioningModel
+            currency:
+                type: string
+                x-go-name: Currency
+            end:
+                format: date-time
+                type: string
+                x-go-name: End
+            instance_count:
+                format: int64
+                type: integer
+                x-go-name: InstanceCount
+            running_cost:
+                description: RunningCost and RunningCount cover instances that still exist.
+                format: double
+                type: number
+                x-go-name: RunningCost
+            running_count:
+                format: int64
+                type: integer
+                x-go-name: RunningCount
+            start:
+                format: date-time
+                type: string
+                x-go-name: Start
+            time_zone:
+                type: string
+                x-go-name: TimeZone
+            total_cost:
+                format: double
+                type: number
+                x-go-name: TotalCost
+            unpriced_count:
+                description: |-
+                    UnpricedCount counts instances whose price is not known (yet); their
+                    cost is not included in the totals.
+                format: int64
+                type: integer
+                x-go-name: UnpricedCount
+            warnings:
+                items:
+                    type: string
+                type: array
+                x-go-name: Warnings
         type: object
         x-go-package: github.com/cloudbase/garm/params
     User:
@@ -5320,6 +5646,121 @@ paths:
             summary: List the garm-agent releases available at the controller's releases URL,
             tags:
                 - tools
+    /usage/instances:
+        get:
+            description: |-
+                List instance runs and their estimated cost, newest first. Runs that
+                overlap the date range are listed; range_cost is the part of the cost
+                that falls in the range.
+            operationId: ListInstanceUsage
+            parameters:
+                - description: Start of the date range (RFC 3339, inclusive).
+                  in: query
+                  name: start
+                  type: string
+                - description: End of the date range (RFC 3339, exclusive).
+                  in: query
+                  name: end
+                  type: string
+                - description: Only list instances of this pool.
+                  in: query
+                  name: poolID
+                  type: string
+                - description: Only list instances of this scale set.
+                  in: query
+                  name: scaleSetID
+                  type: integer
+                - description: Only list instances of this repository, organization or enterprise.
+                  in: query
+                  name: entityID
+                  type: string
+                - description: Only list runs of the instance with this name.
+                  in: query
+                  name: instanceName
+                  type: string
+                - description: Only list instances of this provider.
+                  in: query
+                  name: providerName
+                  type: string
+                - description: Only list instances with this provisioning model (standard or spot).
+                  in: query
+                  name: provisioningModel
+                  type: string
+                - description: Only list instances that still exist.
+                  in: query
+                  name: runningOnly
+                  type: boolean
+                - description: The page at which to list.
+                  in: query
+                  name: page
+                  type: integer
+                - description: Number of items per page.
+                  in: query
+                  name: pageSize
+                  type: integer
+            responses:
+                "200":
+                    description: InstanceUsagePaginatedResponse
+                    schema:
+                        $ref: '#/definitions/InstanceUsagePaginatedResponse'
+                "400":
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            tags:
+                - usage
+    /usage/summary:
+        get:
+            description: |-
+                Get the estimated cost of all instances in a date range. The cost of
+                instances that run across the range boundaries is prorated.
+            operationId: GetUsageSummary
+            parameters:
+                - description: Start of the date range (RFC 3339, inclusive).
+                  in: query
+                  name: start
+                  required: true
+                  type: string
+                - description: End of the date range (RFC 3339, exclusive). At most 366 days after start.
+                  in: query
+                  name: end
+                  required: true
+                  type: string
+                - description: IANA time zone of the daily breakdown (default UTC).
+                  in: query
+                  name: timeZone
+                  type: string
+                - description: Only include instances of this pool.
+                  in: query
+                  name: poolID
+                  type: string
+                - description: Only include instances of this scale set.
+                  in: query
+                  name: scaleSetID
+                  type: integer
+                - description: Only include instances of this repository, organization or enterprise.
+                  in: query
+                  name: entityID
+                  type: string
+                - description: Only include instances of this provider.
+                  in: query
+                  name: providerName
+                  type: string
+                - description: Only include instances with this provisioning model (standard or spot).
+                  in: query
+                  name: provisioningModel
+                  type: string
+            responses:
+                "200":
+                    description: UsageSummary
+                    schema:
+                        $ref: '#/definitions/UsageSummary'
+                "400":
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            tags:
+                - usage
 produces:
     - application/json
 security:

@@ -243,6 +243,20 @@ definitions:
                 alias: garm_params
                 package: github.com/cloudbase/garm/params
             type: Instance
+    InstanceUsage:
+        type: object
+        x-go-type:
+            import:
+                alias: garm_params
+                package: github.com/cloudbase/garm/params
+            type: InstanceUsage
+    InstanceUsagePaginatedResponse:
+        type: object
+        x-go-type:
+            import:
+                alias: garm_params
+                package: github.com/cloudbase/garm/params
+            type: InstanceUsagePaginatedResponse
     Instances:
         items:
             $ref: '#/definitions/Instance'
@@ -485,6 +499,13 @@ definitions:
                 alias: garm_params
                 package: github.com/cloudbase/garm/params
             type: UpdateTemplateParams
+    UsageSummary:
+        type: object
+        x-go-type:
+            import:
+                alias: garm_params
+                package: github.com/cloudbase/garm/params
+            type: UsageSummary
     User:
         type: object
         x-go-type:
@@ -3197,6 +3218,121 @@ paths:
             summary: List the garm-agent releases available at the controller's releases URL,
             tags:
                 - tools
+    /usage/instances:
+        get:
+            description: |-
+                List instance runs and their estimated cost, newest first. Runs that
+                overlap the date range are listed; range_cost is the part of the cost
+                that falls in the range.
+            operationId: ListInstanceUsage
+            parameters:
+                - description: Start of the date range (RFC 3339, inclusive).
+                  in: query
+                  name: start
+                  type: string
+                - description: End of the date range (RFC 3339, exclusive).
+                  in: query
+                  name: end
+                  type: string
+                - description: Only list instances of this pool.
+                  in: query
+                  name: poolID
+                  type: string
+                - description: Only list instances of this scale set.
+                  in: query
+                  name: scaleSetID
+                  type: integer
+                - description: Only list instances of this repository, organization or enterprise.
+                  in: query
+                  name: entityID
+                  type: string
+                - description: Only list runs of the instance with this name.
+                  in: query
+                  name: instanceName
+                  type: string
+                - description: Only list instances of this provider.
+                  in: query
+                  name: providerName
+                  type: string
+                - description: Only list instances with this provisioning model (standard or spot).
+                  in: query
+                  name: provisioningModel
+                  type: string
+                - description: Only list instances that still exist.
+                  in: query
+                  name: runningOnly
+                  type: boolean
+                - description: The page at which to list.
+                  in: query
+                  name: page
+                  type: integer
+                - description: Number of items per page.
+                  in: query
+                  name: pageSize
+                  type: integer
+            responses:
+                "200":
+                    description: InstanceUsagePaginatedResponse
+                    schema:
+                        $ref: '#/definitions/InstanceUsagePaginatedResponse'
+                "400":
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            tags:
+                - usage
+    /usage/summary:
+        get:
+            description: |-
+                Get the estimated cost of all instances in a date range. The cost of
+                instances that run across the range boundaries is prorated.
+            operationId: GetUsageSummary
+            parameters:
+                - description: Start of the date range (RFC 3339, inclusive).
+                  in: query
+                  name: start
+                  required: true
+                  type: string
+                - description: End of the date range (RFC 3339, exclusive). At most 366 days after start.
+                  in: query
+                  name: end
+                  required: true
+                  type: string
+                - description: IANA time zone of the daily breakdown (default UTC).
+                  in: query
+                  name: timeZone
+                  type: string
+                - description: Only include instances of this pool.
+                  in: query
+                  name: poolID
+                  type: string
+                - description: Only include instances of this scale set.
+                  in: query
+                  name: scaleSetID
+                  type: integer
+                - description: Only include instances of this repository, organization or enterprise.
+                  in: query
+                  name: entityID
+                  type: string
+                - description: Only include instances of this provider.
+                  in: query
+                  name: providerName
+                  type: string
+                - description: Only include instances with this provisioning model (standard or spot).
+                  in: query
+                  name: provisioningModel
+                  type: string
+            responses:
+                "200":
+                    description: UsageSummary
+                    schema:
+                        $ref: '#/definitions/UsageSummary'
+                "400":
+                    description: APIErrorResponse
+                    schema:
+                        $ref: '#/definitions/APIErrorResponse'
+            tags:
+                - usage
 produces:
     - application/json
 security:

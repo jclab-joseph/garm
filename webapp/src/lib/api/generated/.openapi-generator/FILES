@@ -52,6 +52,9 @@ docs/HooksApi.md
 docs/InstallWebhookParams.md
 docs/Instance.md
 docs/InstanceMetadata.md
+docs/InstancePrice.md
+docs/InstancePriceComponent.md
+docs/InstanceUsage.md
 docs/InstancesApi.md
 docs/JWTResponse.md
 docs/Job.md
@@ -94,6 +97,9 @@ docs/UpdatePoolParams.md
 docs/UpdateProxyParams.md
 docs/UpdateScaleSetParams.md
 docs/UpdateTemplateParams.md
+docs/UsageApi.md
+docs/UsageGroup.md
+docs/UsageSummary.md
 docs/User.md
 git_push.sh
 index.ts

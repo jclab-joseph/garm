@@ -41,3 +41,12 @@ type ExternalProvider interface {
 	// GetVersion returns the version of the provider.
 	GetVersion(ctx context.Context) string
 }
+
+// PriceEstimator is implemented by providers that can estimate the price of
+// the instances they create. It is optional: providers that do not implement
+// it fail the GetInstancePrice command.
+type PriceEstimator interface {
+	// GetInstancePrice returns the estimated hourly price of an instance
+	// created from bootstrapParams.
+	GetInstancePrice(ctx context.Context, bootstrapParams params.BootstrapInstance) (params.InstancePrice, error)
+}
