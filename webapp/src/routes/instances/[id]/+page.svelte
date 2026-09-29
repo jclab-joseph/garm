@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { garmApi } from '$lib/api/client.js';
-	import type { Instance } from '$lib/api/generated/api.js';
+	import type { Instance, InstanceUsage } from '$lib/api/generated/api.js';
 	import { resolve } from '$app/paths';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
 	import ShellTerminal from '$lib/components/ShellTerminal.svelte';
@@ -12,6 +12,7 @@
 	import { formatDate, scrollToBottomEvents, getEventLevelBadge } from '$lib/utils/common.js';
 	import { extractAPIError } from '$lib/utils/apiError';
 	import Badge from '$lib/components/Badge.svelte';
+	import { costSoFarText, formatDuration, formatHourlyPrice, isRunning, modelBadge } from '$lib/utils/usage.js';
 
 	let instance: Instance | null = null;
 	let loading = true;
@@ -20,6 +21,9 @@
 	let showShellModal = false;
 	let unsubscribeWebsocket: (() => void) | null = null;
 	let statusMessagesContainer: HTMLElement;
+	// Latest usage record (estimated cost) of this instance. Stays null when
+	// there is none or the request fails; the cost card is then not shown.
+	let usage: InstanceUsage | null = null;
 
 
 	$: instanceName = decodeURIComponent($page.params.id || '');
@@ -54,6 +58,18 @@
 			error = err instanceof Error ? err.message : 'Failed to load instance';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function loadUsage() {
+		if (!instanceName) return;
+		try {
+			const response = await garmApi.listInstanceUsage({ instanceName, pageSize: 1 });
+			usage = response?.results?.[0] ?? null;
+		} catch (err) {
+			// Cost is optional information; never break the page over it.
+			console.debug('Failed to load instance cost', err);
+			usage = null;
 		}
 	}
 
@@ -106,6 +122,7 @@
 				}, 100);
 			}
 		});
+		loadUsage();
 
 		// Subscribe to real-time instance events
 		unsubscribeWebsocket = websocketStore.subscribeToEntity(
@@ -328,6 +345,42 @@
 				</dl>
 			</div>
 		</div>
+
+		{#if usage}
+		{@const badge = modelBadge(usage)}
+		<!-- Estimated cost of the latest run of this instance -->
+		<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6" data-testid="instance-cost-card">
+			<div class="flex items-center justify-between mb-4">
+				<h3 class="text-lg font-medium text-gray-900 dark:text-white">Cost</h3>
+				<a href={resolve('/usage')} class="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 hover:underline">All costs</a>
+			</div>
+			<dl class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+				<div>
+					<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Model</dt>
+					<dd class="mt-1 text-sm" title={badge.title}><Badge variant={badge.variant} text={badge.text} /></dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Hourly price</dt>
+					<dd class="mt-1 text-sm text-gray-900 dark:text-white tabular-nums">
+						{usage.hourly_price !== undefined && usage.hourly_price !== null ? `${formatHourlyPrice(usage.hourly_price, usage.currency)}/h` : '—'}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{isRunning(usage) ? 'Running for' : 'Ran for'}</dt>
+					<dd class="mt-1 text-sm text-gray-900 dark:text-white tabular-nums">{usage.started_at ? formatDuration(usage.billed_seconds) : 'Not started'}</dd>
+				</div>
+				<div>
+					<dt class="text-sm font-medium text-gray-500 dark:text-gray-400">{isRunning(usage) ? 'Cost so far' : 'Cost'}</dt>
+					<dd class="mt-1 text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{costSoFarText(usage)}</dd>
+				</div>
+			</dl>
+			{#if usage.price_status === 'error' && usage.price_error}
+				<p class="mt-3 text-xs text-red-700 dark:text-red-300">Price lookup failed: {usage.price_error}</p>
+			{:else if usage.price?.warnings && usage.price.warnings.length > 0}
+				<p class="mt-3 text-xs text-yellow-800 dark:text-yellow-200">{usage.price.warnings.join('; ')}</p>
+			{/if}
+		</div>
+		{/if}
 
 		{#if instance.status_messages && instance.status_messages.length > 0}
 		<!-- Status Messages -->

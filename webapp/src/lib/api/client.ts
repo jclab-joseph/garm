@@ -32,6 +32,14 @@ import {
 	type FileObject,
 	type FileObjectPaginatedResponse,
 	type UpdateFileObjectParams,
+	type InstanceUsage,
+	type InstanceUsagePaginatedResponse,
+	type ListInstanceUsageParams,
+	type GetUsageSummaryParams,
+	type UsageSummary,
+	type UsageGroup,
+	type InstancePrice,
+	type InstancePriceComponent,
 } from './generated-client.js';
 
 // Import endpoint and credentials types directly
@@ -78,6 +86,14 @@ export type {
 	FileObject,
 	FileObjectPaginatedResponse,
 	UpdateFileObjectParams,
+	InstanceUsage,
+	InstanceUsagePaginatedResponse,
+	ListInstanceUsageParams,
+	GetUsageSummaryParams,
+	UsageSummary,
+	UsageGroup,
+	InstancePrice,
+	InstancePriceComponent,
 };
 
 // Legacy APIError type for backward compatibility

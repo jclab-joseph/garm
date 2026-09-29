@@ -1647,6 +1647,32 @@ definitions:
         type: object
         x-go-package: github.com/cloudbase/garm/params
     InstanceUsagePaginatedResponse:
+        properties:
+            current_page:
+                format: uint64
+                type: integer
+                x-go-name: CurrentPage
+            next_page:
+                format: uint64
+                type: integer
+                x-go-name: NextPage
+            pages:
+                format: uint64
+                type: integer
+                x-go-name: Pages
+            previous_page:
+                format: uint64
+                type: integer
+                x-go-name: PreviousPage
+            results:
+                items:
+                    type: object
+                type: array
+                x-go-name: Results
+            total_count:
+                format: uint64
+                type: integer
+                x-go-name: TotalCount
         type: object
         x-go-package: github.com/cloudbase/garm/params
     Instances:

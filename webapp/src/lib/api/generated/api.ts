@@ -2520,6 +2520,49 @@ export interface InstanceUsage {
     'workflow_run_url'?: string;
 }
 /**
+ * 
+ * @export
+ * @interface InstanceUsagePaginatedResponse
+ */
+export interface InstanceUsagePaginatedResponse {
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsagePaginatedResponse
+     */
+    'current_page'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsagePaginatedResponse
+     */
+    'next_page'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsagePaginatedResponse
+     */
+    'pages'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsagePaginatedResponse
+     */
+    'previous_page'?: number;
+    /**
+     * 
+     * @type {Array<object>}
+     * @memberof InstanceUsagePaginatedResponse
+     */
+    'results'?: Array<object>;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsagePaginatedResponse
+     */
+    'total_count'?: number;
+}
+/**
  * JWTResponse holds the JWT token returned as a result of a successful auth
  * @export
  * @interface JWTResponse
@@ -17274,7 +17317,7 @@ export const UsageApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listInstanceUsage(start?: string, end?: string, poolID?: string, scaleSetID?: number, entityID?: string, instanceName?: string, providerName?: string, provisioningModel?: string, runningOnly?: boolean, page?: number, pageSize?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
+        async listInstanceUsage(start?: string, end?: string, poolID?: string, scaleSetID?: number, entityID?: string, instanceName?: string, providerName?: string, provisioningModel?: string, runningOnly?: boolean, page?: number, pageSize?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<InstanceUsagePaginatedResponse>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.listInstanceUsage(start, end, poolID, scaleSetID, entityID, instanceName, providerName, provisioningModel, runningOnly, page, pageSize, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['UsageApi.listInstanceUsage']?.[localVarOperationServerIndex]?.url;
@@ -17322,7 +17365,7 @@ export const UsageApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listInstanceUsage(start?: string, end?: string, poolID?: string, scaleSetID?: number, entityID?: string, instanceName?: string, providerName?: string, provisioningModel?: string, runningOnly?: boolean, page?: number, pageSize?: number, options?: RawAxiosRequestConfig): AxiosPromise<object> {
+        listInstanceUsage(start?: string, end?: string, poolID?: string, scaleSetID?: number, entityID?: string, instanceName?: string, providerName?: string, provisioningModel?: string, runningOnly?: boolean, page?: number, pageSize?: number, options?: RawAxiosRequestConfig): AxiosPromise<InstanceUsagePaginatedResponse> {
             return localVarFp.listInstanceUsage(start, end, poolID, scaleSetID, entityID, instanceName, providerName, provisioningModel, runningOnly, page, pageSize, options).then((request) => request(axios, basePath));
         },
     };

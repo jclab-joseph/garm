@@ -55,6 +55,7 @@ docs/InstanceMetadata.md
 docs/InstancePrice.md
 docs/InstancePriceComponent.md
 docs/InstanceUsage.md
+docs/InstanceUsagePaginatedResponse.md
 docs/InstancesApi.md
 docs/JWTResponse.md
 docs/Job.md

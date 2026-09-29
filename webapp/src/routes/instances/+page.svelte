@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { garmApi } from '$lib/api/client.js';
-	import type { Instance } from '$lib/api/generated/api.js';
+	import type { Instance, InstanceUsage } from '$lib/api/generated/api.js';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ShellTerminal from '$lib/components/ShellTerminal.svelte';
@@ -10,12 +10,17 @@
 	import DataTable from '$lib/components/DataTable.svelte';
 	import { extractAPIError } from '$lib/utils/apiError';
 	import { EntityCell, StatusCell, ActionsCell, GenericCell, InstancePoolCell } from '$lib/components/cells';
+	import { costSoFarText } from '$lib/utils/usage.js';
 
 	let instances: Instance[] = [];
 	let loading = true;
 	let error = '';
 	let statusFilter = '';
 	let unsubscribeWebsocket: (() => void) | null = null;
+
+	// Estimated cost so far of running instances, keyed by instance name.
+	// Fetched once with a single request; empty (cells show "—") if it fails.
+	let usageByName = new Map<string, InstanceUsage>();
 
 	// Current time for heartbeat staleness check - updates every second
 	let currentTime = Date.now();
@@ -61,6 +66,20 @@
 			error = err instanceof Error ? err.message : 'Failed to load instances';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function loadRunningCosts() {
+		try {
+			const response = await garmApi.listInstanceUsage({ runningOnly: true, pageSize: 500 });
+			const map = new Map<string, InstanceUsage>();
+			for (const record of response?.results || []) {
+				if (record.instance_name) map.set(record.instance_name, record);
+			}
+			usageByName = map;
+		} catch (err) {
+			// Cost is optional information; never break the instance list over it.
+			console.debug('Failed to load instance costs', err);
 		}
 	}
 
@@ -112,8 +131,8 @@
 		}
 	}
 
-	// DataTable configuration
-	const columns = [
+	// DataTable configuration (reactive so the cost column updates once costs load)
+	$: columns = [
 		{ 
 			key: 'name', 
 			title: 'Name',
@@ -137,6 +156,15 @@
 			title: 'Created',
 			cellComponent: GenericCell,
 			cellProps: { field: 'created_at', type: 'date' }
+		},
+		{
+			key: 'cost',
+			title: 'Cost',
+			align: 'right' as const,
+			cellComponent: GenericCell,
+			cellProps: {
+				getValue: (item: Instance) => costSoFarText(item.name ? usageByName.get(item.name) : undefined)
+			}
 		},
 		{ 
 			key: 'status', 
@@ -262,6 +290,7 @@
 	onMount(() => {
 		// Initial load
 		loadInstances();
+		loadRunningCosts();
 
 		// Subscribe to real-time instance events - correct entity type is 'instance'
 		unsubscribeWebsocket = websocketStore.subscribeToEntity(

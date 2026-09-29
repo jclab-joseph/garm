@@ -190,9 +190,6 @@ type SetInstanceUsagePriceParams struct {
 	Error  string
 }
 
-// swagger:model InstanceUsagePaginatedResponse
-type InstanceUsagePaginatedResponse = PaginatedResponse[InstanceUsage]
-
 // UsageGroup is the usage of a group of instances in a UsageSummary.
 //
 // swagger:model UsageGroup

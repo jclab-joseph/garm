@@ -21,6 +21,7 @@ import {
   ProxiesApi,
   ObjectsApi,
   ToolsApi,
+  UsageApi,
   type GARMAgentRelease,
   type Repository,
   type Organization,
@@ -65,6 +66,12 @@ import {
   type FileObjectPaginatedResponse,
   type UpdateFileObjectParams,
   type RestoreTemplateRequest,
+  type InstanceUsage,
+  type InstanceUsagePaginatedResponse as GeneratedInstanceUsagePaginatedResponse,
+  type UsageSummary,
+  type UsageGroup,
+  type InstancePrice,
+  type InstancePriceComponent,
   Configuration
 } from './generated/index';
 
@@ -108,7 +115,52 @@ export type {
   FileObjectPaginatedResponse,
   UpdateFileObjectParams,
   RestoreTemplateRequest,
+  InstanceUsage,
+  UsageSummary,
+  UsageGroup,
+  InstancePrice,
+  InstancePriceComponent,
 };
+
+// The generated InstanceUsagePaginatedResponse types results as object[];
+// narrow them to InstanceUsage.
+export interface InstanceUsagePaginatedResponse
+  extends Omit<GeneratedInstanceUsagePaginatedResponse, 'results'> {
+  results?: InstanceUsage[];
+}
+
+export interface ListInstanceUsageParams {
+  /** Start of the date range (RFC 3339, inclusive). */
+  start?: string;
+  /** End of the date range (RFC 3339, exclusive). */
+  end?: string;
+  poolID?: string;
+  scaleSetID?: number;
+  entityID?: string;
+  instanceName?: string;
+  providerName?: string;
+  /** "standard" or "spot". */
+  provisioningModel?: string;
+  runningOnly?: boolean;
+  page?: number;
+  /** At most 500 (server side limit). */
+  pageSize?: number;
+}
+
+export interface GetUsageSummaryParams {
+  /** Start of the date range (RFC 3339, inclusive). */
+  start: string;
+  /** End of the date range (RFC 3339, exclusive). At most 366 days after start. */
+  end: string;
+  /** IANA time zone of the daily breakdown (default UTC). */
+  timeZone?: string;
+  poolID?: string;
+  scaleSetID?: number;
+  entityID?: string;
+  providerName?: string;
+  /** "standard" or "spot". */
+  provisioningModel?: string;
+}
 
 // Define common request types for compatibility
 export interface LoginRequest {
@@ -152,6 +204,7 @@ export class GeneratedGarmApiClient {
   private proxiesApi: ProxiesApi;
   private objectsApi: ObjectsApi;
   private toolsApi: ToolsApi;
+  private usageApi: UsageApi;
 
   constructor(baseUrl: string = '') {
     this.baseUrl = baseUrl || window.location.origin;
@@ -188,6 +241,7 @@ export class GeneratedGarmApiClient {
     this.proxiesApi = new ProxiesApi(this.config);
     this.objectsApi = new ObjectsApi(this.config);
     this.toolsApi = new ToolsApi(this.config);
+    this.usageApi = new UsageApi(this.config);
   }
 
   // Set authentication token
@@ -768,6 +822,38 @@ export class GeneratedGarmApiClient {
 
   async deleteFileObject(objectID: string): Promise<void> {
     await this.objectsApi.deleteFileObject(objectID);
+  }
+
+  // Instance usage (estimated cost) methods
+  async listInstanceUsage(params: ListInstanceUsageParams = {}): Promise<InstanceUsagePaginatedResponse> {
+    const response = await this.usageApi.listInstanceUsage(
+      params.start,
+      params.end,
+      params.poolID,
+      params.scaleSetID,
+      params.entityID,
+      params.instanceName,
+      params.providerName,
+      params.provisioningModel,
+      params.runningOnly,
+      params.page,
+      params.pageSize
+    );
+    return response.data as InstanceUsagePaginatedResponse;
+  }
+
+  async getUsageSummary(params: GetUsageSummaryParams): Promise<UsageSummary> {
+    const response = await this.usageApi.getUsageSummary(
+      params.start,
+      params.end,
+      params.timeZone,
+      params.poolID,
+      params.scaleSetID,
+      params.entityID,
+      params.providerName,
+      params.provisioningModel
+    );
+    return response.data;
   }
 }
 

@@ -1819,6 +1819,13 @@ type PaginatedResponse[T any] struct {
 // swagger:model FileObjectPaginatedResponse
 type FileObjectPaginatedResponse = PaginatedResponse[FileObject]
 
+// go-swagger only resolves generic aliases declared in the same file as
+// PaginatedResponse, so InstanceUsagePaginatedResponse lives here rather than
+// in usage.go.
+
+// swagger:model InstanceUsagePaginatedResponse
+type InstanceUsagePaginatedResponse = PaginatedResponse[InstanceUsage]
+
 const (
 	// ToolSourceLocal indicates the tool is stored in the internal object store.
 	ToolSourceLocal = "local"
