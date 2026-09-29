@@ -25,7 +25,7 @@ github.com/chzyer/readline
 # github.com/clipperhouse/uax29/v2 v2.7.0
 ## explicit; go 1.18
 github.com/clipperhouse/uax29/v2/graphemes
-# github.com/cloudbase/garm-provider-common v0.1.10-0.20260707224136-4f5d9bf80949 => ../provider-common
+# github.com/cloudbase/garm-provider-common v0.1.10-0.20260707224136-4f5d9bf80949 => github.com/jclab-joseph/garm-provider-common v0.0.0-20260929070048-bca4bbfda536
 ## explicit; go 1.25.0
 github.com/cloudbase/garm-provider-common/cloudconfig
 github.com/cloudbase/garm-provider-common/defaults
@@ -497,4 +497,4 @@ gorm.io/gorm/migrator
 gorm.io/gorm/schema
 gorm.io/gorm/utils
 # github.com/mattn/go-sqlite3 => github.com/gabriel-samfira/go-sqlite3 v0.0.0-20251005121134-bc61ecf9b4c7
-# github.com/cloudbase/garm-provider-common => ../provider-common
+# github.com/cloudbase/garm-provider-common => github.com/jclab-joseph/garm-provider-common v0.0.0-20260929070048-bca4bbfda536
