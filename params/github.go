@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -65,6 +66,8 @@ type WorkflowJob struct {
 		RunnerName      string   `json:"runner_name"`
 		RunnerGroupID   int64    `json:"runner_group_id"`
 		RunnerGroupName string   `json:"runner_group_name"`
+		WorkflowName    string   `json:"workflow_name"`
+		HeadBranch      string   `json:"head_branch"`
 	} `json:"workflow_job"`
 	Repository struct {
 		ID       int64  `json:"id"`
@@ -565,5 +568,27 @@ func (s ScaleSetJobMessage) ToJob() Job {
 		RepositoryName:  s.RepositoryName,
 		RepositoryOwner: s.OwnerName,
 		Labels:          s.RequestLabels,
+		WorkflowName:    workflowFromRef(s.JobWorkflowRef),
+		HeadBranch:      branchFromRef(s.JobWorkflowRef),
 	}
+}
+
+// workflowFromRef returns the workflow file of a job workflow ref such as
+// "owner/repo/.github/workflows/ci.yml@refs/heads/main".
+func workflowFromRef(ref string) string {
+	workflow, _, _ := strings.Cut(ref, "@")
+	parts := strings.SplitN(workflow, "/", 3)
+	if len(parts) < 3 {
+		return workflow
+	}
+	return parts[2]
+}
+
+// branchFromRef returns the branch (or ref) of a job workflow ref.
+func branchFromRef(ref string) string {
+	_, gitRef, ok := strings.Cut(ref, "@")
+	if !ok {
+		return ""
+	}
+	return strings.TrimPrefix(gitRef, "refs/heads/")
 }

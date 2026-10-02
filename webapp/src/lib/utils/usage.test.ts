@@ -20,8 +20,11 @@ import {
 	rangeToSearchParams,
 	toDateString,
 	toRFC3339,
-	validateRange
+	validateRange,
+	jobConclusionBadge,
+	workflowText
 } from './usage.js';
+import type { InstanceUsage } from '$lib/api/client.js';
 
 // 2026-09-29 15:30 local time (a Tuesday)
 const NOW = new Date(2026, 8, 29, 15, 30);
@@ -220,5 +223,23 @@ describe('record helpers', () => {
 		expect(costSoFarText({ price_status: 'pending' })).toBe('Pending');
 		expect(costSoFarText({ price_status: 'unsupported' })).toBe('—');
 		expect(costSoFarText({ price_status: 'ok', hourly_price: 0.1, cost: 1.5, currency: 'USD' })).toBe('$1.50');
+	});
+});
+
+describe('job details', () => {
+	it('maps job conclusions to badges', () => {
+		expect(jobConclusionBadge(undefined)).toBeNull();
+		expect(jobConclusionBadge('success')).toEqual({ text: 'Success', variant: 'success' });
+		expect(jobConclusionBadge('failure')).toEqual({ text: 'Failure', variant: 'error' });
+		expect(jobConclusionBadge('timed_out')).toEqual({ text: 'timed out', variant: 'error' });
+		expect(jobConclusionBadge('cancelled')).toEqual({ text: 'Cancelled', variant: 'gray' });
+		expect(jobConclusionBadge('skipped')).toEqual({ text: 'skipped', variant: 'gray' });
+	});
+
+	it('describes the workflow, branch and attempt', () => {
+		expect(workflowText({ workflow_name: 'CI', head_branch: 'main' } as InstanceUsage)).toBe('CI · main');
+		expect(workflowText({ workflow_name: 'CI', head_branch: 'main', run_attempt: 1 } as InstanceUsage)).toBe('CI · main');
+		expect(workflowText({ workflow_name: 'CI', run_attempt: 3 } as InstanceUsage)).toBe('CI · attempt 3');
+		expect(workflowText({} as InstanceUsage)).toBe('');
 	});
 });

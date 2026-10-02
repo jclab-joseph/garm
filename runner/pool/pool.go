@@ -1285,6 +1285,10 @@ func (r *basePoolManager) paramsWorkflowJobToParamsJob(job params.WorkflowJob) (
 		RepositoryName:  job.Repository.Name,
 		RepositoryOwner: job.Repository.Owner.Login,
 		Labels:          job.WorkflowJob.Labels,
+		JobURL:          job.WorkflowJob.HTMLURL,
+		RunAttempt:      job.WorkflowJob.RunAttempt,
+		WorkflowName:    job.WorkflowJob.WorkflowName,
+		HeadBranch:      job.WorkflowJob.HeadBranch,
 	}
 
 	if job.Repository.HTMLURL != "" && job.WorkflowJob.RunID != 0 {

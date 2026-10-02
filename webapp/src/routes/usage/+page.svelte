@@ -26,6 +26,8 @@
 		isRunning,
 		matchPreset,
 		modelBadge,
+		jobConclusionBadge,
+		workflowText,
 		modelCost,
 		modelCount,
 		presetRange,
@@ -401,6 +403,9 @@
 										<span class="block truncate text-sm font-medium font-mono text-gray-900 dark:text-white">{run.instance_name}</span>
 									{/if}
 									<p class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400">{run.flavor || '—'}{run.entity_name ? ` · ${run.entity_name}` : ''}</p>
+									{#if jobText(run)}
+										<p class="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400" title={jobText(run)}>{[workflowText(run), jobText(run)].filter(Boolean).join(' · ')}</p>
+									{/if}
 								</div>
 								<div class="text-right shrink-0">
 									<p class="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{formatCost(run.range_cost ?? 0, recordCurrency(run))}</p>
@@ -492,13 +497,18 @@
 									<td class="px-3 py-3 align-top whitespace-nowrap text-right tabular-nums text-gray-700 dark:text-gray-300">
 										{run.hourly_price !== undefined && run.hourly_price !== null ? `${formatHourlyPrice(run.hourly_price, recordCurrency(run))}/h` : '—'}
 									</td>
-									<td class="px-3 py-3 align-top max-w-[12rem]">
+									<td class="px-3 py-3 align-top max-w-[14rem]">
 										{#if jobText(run)}
-											{#if run.workflow_run_url}
-												<a href={run.workflow_run_url} target="_blank" rel="noopener noreferrer" class="block truncate {linkClass}" title={jobText(run)}>{jobText(run)}</a>
+											{@const conclusion = jobConclusionBadge(run.job_conclusion)}
+											{#if run.job_url || run.workflow_run_url}
+												<a href={run.job_url || run.workflow_run_url} target="_blank" rel="noopener noreferrer" class="block truncate {linkClass}" title={jobText(run)}>{jobText(run)}</a>
 											{:else}
 												<span class="block truncate text-gray-700 dark:text-gray-300" title={jobText(run)}>{jobText(run)}</span>
 											{/if}
+											<span class="flex items-center gap-1 min-w-0 text-xs text-gray-500 dark:text-gray-400">
+												{#if conclusion}<Badge variant={conclusion.variant} text={conclusion.text} />{/if}
+												{#if workflowText(run)}<span class="truncate" title={workflowText(run)}>{workflowText(run)}</span>{/if}
+											</span>
 										{:else}
 											<span class="text-gray-400 dark:text-gray-500">—</span>
 										{/if}
@@ -553,6 +563,41 @@
 				<dd class="text-gray-900 dark:text-white">{formatDateTime(run.created_at)}{run.end_reason ? ` · ${run.end_reason}` : ''}</dd>
 			</div>
 		</dl>
+		{#if run.job_name || run.workflow_run_url}
+			<dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2" data-testid="usage-job-details">
+				<div>
+					<dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Workflow</dt>
+					<dd class="text-gray-900 dark:text-white">
+						{run.workflow_name || '—'}{run.head_branch ? ` · ${run.head_branch}` : ''}{run.run_attempt && run.run_attempt > 1 ? ` · attempt ${run.run_attempt}` : ''}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Job</dt>
+					<dd class="text-gray-900 dark:text-white">
+						{#if run.job_url}
+							<a href={run.job_url} target="_blank" rel="noopener noreferrer" class="break-all {linkClass}">{run.job_url}</a>
+						{:else}
+							{jobText(run) || '—'}
+						{/if}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Workflow run</dt>
+					<dd class="text-gray-900 dark:text-white">
+						{#if run.workflow_run_url}
+							<a href={run.workflow_run_url} target="_blank" rel="noopener noreferrer" class="break-all {linkClass}">{run.workflow_run_url}</a>
+						{:else}—{/if}
+					</dd>
+				</div>
+				<div>
+					<dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Job result / time</dt>
+					<dd class="text-gray-900 dark:text-white">
+						{run.job_conclusion || (run.job_completed_at ? '—' : 'in progress')}
+						{#if run.job_started_at} · {formatDateTime(run.job_started_at)}{#if run.job_completed_at}{' → '}{formatDateTime(run.job_completed_at)}{/if}{/if}
+					</dd>
+				</div>
+			</dl>
+		{/if}
 
 		{#if run.price_error}
 			<p class="text-red-700 dark:text-red-300">Price error: {run.price_error}</p>

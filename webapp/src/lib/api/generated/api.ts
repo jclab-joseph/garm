@@ -2381,6 +2381,12 @@ export interface InstanceUsage {
      */
     'flavor'?: string;
     /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'head_branch'?: string;
+    /**
      * HourlyPrice is the estimated price per hour, looked up when the instance was created. Unset until PriceStatus is ok.
      * @type {number}
      * @memberof InstanceUsage
@@ -2411,6 +2417,18 @@ export interface InstanceUsage {
      */
     'instance_name'?: string;
     /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'job_completed_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'job_conclusion'?: string;
+    /**
      * The last job that ran on the instance, if any.
      * @type {number}
      * @memberof InstanceUsage
@@ -2428,6 +2446,18 @@ export interface InstanceUsage {
      * @memberof InstanceUsage
      */
     'job_repository'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'job_started_at'?: string;
+    /**
+     * JobURL is the web URL of the job; WorkflowRunURL the one of its run.
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'job_url'?: string;
     /**
      * 
      * @type {string}
@@ -2505,6 +2535,12 @@ export interface InstanceUsage {
      * @type {number}
      * @memberof InstanceUsage
      */
+    'run_attempt'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsage
+     */
     'scale_set_id'?: number;
     /**
      * StartedAt is when the provider reported the instance as running. Billing starts here. Instances that never ran have no StartedAt.
@@ -2512,6 +2548,12 @@ export interface InstanceUsage {
      * @memberof InstanceUsage
      */
     'started_at'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'workflow_name'?: string;
     /**
      * 
      * @type {string}
@@ -2618,11 +2660,23 @@ export interface Job {
      */
     'forge_instance_id'?: string;
     /**
+     * 
+     * @type {string}
+     * @memberof Job
+     */
+    'head_branch'?: string;
+    /**
      * ID is the ID of the job.
      * @type {number}
      * @memberof Job
      */
     'id'?: number;
+    /**
+     * JobURL is the web URL of the job (.../actions/runs/<run>/job/<job>).
+     * @type {string}
+     * @memberof Job
+     */
+    'job_url'?: string;
     /**
      * 
      * @type {Array<string>}
@@ -2665,6 +2719,12 @@ export interface Job {
      * @memberof Job
      */
     'repository_owner'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof Job
+     */
+    'run_attempt'?: number;
     /**
      * RunID is the ID of the workflow run. A run may have multiple jobs.
      * @type {number}
@@ -2725,6 +2785,12 @@ export interface Job {
      * @memberof Job
      */
     'workflow_job_id'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof Job
+     */
+    'workflow_name'?: string;
     /**
      * 
      * @type {string}

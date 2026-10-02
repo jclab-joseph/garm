@@ -1562,6 +1562,9 @@ definitions:
             flavor:
                 type: string
                 x-go-name: Flavor
+            head_branch:
+                type: string
+                x-go-name: HeadBranch
             hourly_price:
                 description: |-
                     HourlyPrice is the estimated price per hour, looked up when the
@@ -1581,6 +1584,13 @@ definitions:
             instance_name:
                 type: string
                 x-go-name: InstanceName
+            job_completed_at:
+                format: date-time
+                type: string
+                x-go-name: JobCompletedAt
+            job_conclusion:
+                type: string
+                x-go-name: JobConclusion
             job_id:
                 description: The last job that ran on the instance, if any.
                 format: int64
@@ -1592,6 +1602,14 @@ definitions:
             job_repository:
                 type: string
                 x-go-name: JobRepository
+            job_started_at:
+                format: date-time
+                type: string
+                x-go-name: JobStartedAt
+            job_url:
+                description: JobURL is the web URL of the job; WorkflowRunURL the one of its run.
+                type: string
+                x-go-name: JobURL
             os_arch:
                 $ref: '#/definitions/OSArch'
             os_type:
@@ -1629,6 +1647,10 @@ definitions:
                 format: double
                 type: number
                 x-go-name: RangeCost
+            run_attempt:
+                format: int64
+                type: integer
+                x-go-name: RunAttempt
             scale_set_id:
                 format: uint64
                 type: integer
@@ -1640,6 +1662,9 @@ definitions:
                 format: date-time
                 type: string
                 x-go-name: StartedAt
+            workflow_name:
+                type: string
+                x-go-name: WorkflowName
             workflow_run_url:
                 type: string
                 x-go-name: WorkflowRunURL
@@ -1720,11 +1745,18 @@ definitions:
                 format: uuid
                 type: string
                 x-go-name: ForgeInstanceID
+            head_branch:
+                type: string
+                x-go-name: HeadBranch
             id:
                 description: ID is the ID of the job.
                 format: int64
                 type: integer
                 x-go-name: ID
+            job_url:
+                description: JobURL is the web URL of the job (.../actions/runs/<run>/job/<job>).
+                type: string
+                x-go-name: JobURL
             labels:
                 items:
                     type: string
@@ -1763,6 +1795,10 @@ definitions:
             repository_owner:
                 type: string
                 x-go-name: RepositoryOwner
+            run_attempt:
+                format: int64
+                type: integer
+                x-go-name: RunAttempt
             run_id:
                 description: RunID is the ID of the workflow run. A run may have multiple jobs.
                 format: int64
@@ -1804,6 +1840,9 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: WorkflowJobID
+            workflow_name:
+                type: string
+                x-go-name: WorkflowName
             workflow_run_url:
                 type: string
                 x-go-name: WorkflowRunURL

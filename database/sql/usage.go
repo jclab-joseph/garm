@@ -74,6 +74,13 @@ type InstanceUsage struct {
 	JobName        string
 	JobRepository  string
 	WorkflowRunURL string
+	JobURL         string
+	RunAttempt     int64
+	WorkflowName   string
+	HeadBranch     string
+	JobConclusion  string
+	JobStartedAt   *time.Time
+	JobCompletedAt *time.Time
 }
 
 func (u *InstanceUsage) BeforeCreate(_ *gorm.DB) error {
@@ -250,9 +257,10 @@ func (s *sqlDatabase) closeInstanceUsage(tx *gorm.DB, instanceID uuid.UUID, now 
 }
 
 // recordInstanceUsageJob copies the job that runs on an instance to its usage
-// record. Jobs are deleted when they complete, so this is done as soon as
-// the job is linked to the instance.
-func (s *sqlDatabase) recordInstanceUsageJob(tx *gorm.DB, job WorkflowJob) error {
+// record. Jobs are deleted when they complete, so this is done on every job
+// update once the job is linked to the instance; the completed update brings
+// the conclusion. update carries the fields that are not stored with jobs.
+func (s *sqlDatabase) recordInstanceUsageJob(tx *gorm.DB, job WorkflowJob, update params.Job) error {
 	if job.InstanceID == nil {
 		return nil
 	}
@@ -271,6 +279,29 @@ func (s *sqlDatabase) recordInstanceUsageJob(tx *gorm.DB, job WorkflowJob) error
 	}
 	if job.WorkflowRunURL != "" {
 		updates["workflow_run_url"] = job.WorkflowRunURL
+	}
+	if job.Conclusion != "" {
+		updates["job_conclusion"] = job.Conclusion
+	}
+	if !job.StartedAt.IsZero() {
+		updates["job_started_at"] = job.StartedAt.UTC()
+	}
+	if !job.CompletedAt.IsZero() {
+		updates["job_completed_at"] = job.CompletedAt.UTC()
+	}
+	// Not every update carries these (e.g. scale set messages); keep the
+	// last known values.
+	for column, value := range map[string]string{
+		"job_url":       update.JobURL,
+		"workflow_name": update.WorkflowName,
+		"head_branch":   update.HeadBranch,
+	} {
+		if value != "" {
+			updates[column] = value
+		}
+	}
+	if update.RunAttempt != 0 {
+		updates["run_attempt"] = update.RunAttempt
 	}
 	if err := tx.Model(&InstanceUsage{}).Where("instance_id = ?", *job.InstanceID).
 		Updates(updates).Error; err != nil {
@@ -307,6 +338,13 @@ func (s *sqlDatabase) sqlToParamsInstanceUsage(u InstanceUsage) (params.Instance
 		JobName:           u.JobName,
 		JobRepository:     u.JobRepository,
 		WorkflowRunURL:    u.WorkflowRunURL,
+		JobURL:            u.JobURL,
+		RunAttempt:        u.RunAttempt,
+		WorkflowName:      u.WorkflowName,
+		HeadBranch:        u.HeadBranch,
+		JobConclusion:     u.JobConclusion,
+		JobStartedAt:      u.JobStartedAt,
+		JobCompletedAt:    u.JobCompletedAt,
 	}
 	if len(u.ExtraSpecs) > 0 {
 		ret.ExtraSpecs = json.RawMessage(u.ExtraSpecs)

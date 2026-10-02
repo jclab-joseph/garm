@@ -81,6 +81,11 @@ const runningSpot: InstanceUsage = {
 	job_repository: 'my-org/app',
 	job_name: 'build',
 	workflow_run_url: 'https://github.com/my-org/app/actions/runs/1',
+	job_url: 'https://github.com/my-org/app/actions/runs/1/job/42',
+	workflow_name: 'CI',
+	head_branch: 'main',
+	run_attempt: 2,
+	job_conclusion: 'success',
 	price: {
 		currency: 'USD',
 		hourly_price: 0.01234,
@@ -200,10 +205,13 @@ describe('Cost page', () => {
 		expect(within(first).getByText('1h 23m')).toBeInTheDocument();
 		expect(within(first).getByText('$0.0123/h')).toBeInTheDocument();
 		expect(within(first).getByText('$0.02')).toBeInTheDocument();
+		// The job links to the job itself, with its workflow, branch, attempt and result
 		expect(within(first).getByRole('link', { name: 'my-org/app · build' })).toHaveAttribute(
 			'href',
-			'https://github.com/my-org/app/actions/runs/1'
+			'https://github.com/my-org/app/actions/runs/1/job/42'
 		);
+		expect(within(first).getByText('CI · main · attempt 2')).toBeInTheDocument();
+		expect(within(first).getByText('Success')).toBeInTheDocument();
 
 		// Ended instance has no link (the instance no longer exists)
 		expect(within(second).queryByRole('link', { name: 'garm-ended-1' })).not.toBeInTheDocument();
@@ -231,6 +239,12 @@ describe('Cost page', () => {
 		expect(within(detailsRow).getByText('local SSD is not priced')).toBeInTheDocument();
 		expect(within(detailsRow).getByText('Total per hour')).toBeInTheDocument();
 		expect(within(detailsRow).getByText(/us-east4/)).toBeInTheDocument();
+
+		// Job and workflow run links
+		const job = within(detailsRow).getByTestId('usage-job-details');
+		expect(within(job).getByRole('link', { name: 'https://github.com/my-org/app/actions/runs/1/job/42' })).toBeInTheDocument();
+		expect(within(job).getByRole('link', { name: 'https://github.com/my-org/app/actions/runs/1' })).toBeInTheDocument();
+		expect(within(job).getByText(/CI · main · attempt 2/)).toBeInTheDocument();
 	});
 
 	it('applies a preset and keeps it in the URL', async () => {

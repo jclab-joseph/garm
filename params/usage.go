@@ -97,10 +97,18 @@ type InstanceUsage struct {
 	PricedAt    *time.Time                  `json:"priced_at,omitempty"`
 
 	// The last job that ran on the instance, if any.
-	JobID          int64  `json:"job_id,omitempty"`
-	JobName        string `json:"job_name,omitempty"`
-	JobRepository  string `json:"job_repository,omitempty"`
-	WorkflowRunURL string `json:"workflow_run_url,omitempty"`
+	JobID         int64  `json:"job_id,omitempty"`
+	JobName       string `json:"job_name,omitempty"`
+	JobRepository string `json:"job_repository,omitempty"`
+	// JobURL is the web URL of the job; WorkflowRunURL the one of its run.
+	JobURL         string     `json:"job_url,omitempty"`
+	WorkflowRunURL string     `json:"workflow_run_url,omitempty"`
+	RunAttempt     int64      `json:"run_attempt,omitempty"`
+	WorkflowName   string     `json:"workflow_name,omitempty"`
+	HeadBranch     string     `json:"head_branch,omitempty"`
+	JobConclusion  string     `json:"job_conclusion,omitempty"`
+	JobStartedAt   *time.Time `json:"job_started_at,omitempty"`
+	JobCompletedAt *time.Time `json:"job_completed_at,omitempty"`
 
 	// The fields below are computed when the record is returned by the API.
 

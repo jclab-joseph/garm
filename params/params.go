@@ -1501,6 +1501,15 @@ type Job struct {
 	RepositoryOwner string `json:"repository_owner,omitempty"`
 	WorkflowRunURL  string `json:"workflow_run_url,omitempty"`
 
+	// The fields below are not stored with the job; they are copied to the
+	// usage record of the instance that runs it.
+
+	// JobURL is the web URL of the job (.../actions/runs/<run>/job/<job>).
+	JobURL       string `json:"job_url,omitempty"`
+	RunAttempt   int64  `json:"run_attempt,omitempty"`
+	WorkflowName string `json:"workflow_name,omitempty"`
+	HeadBranch   string `json:"head_branch,omitempty"`
+
 	Labels []string `json:"labels,omitempty"`
 
 	// The entity that received the hook.

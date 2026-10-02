@@ -182,11 +182,17 @@ func (s *UsageTestSuite) TestJobIsRecorded() {
 	s.Require().NoError(err)
 	s.Require().Zero(s.usageOf(instance).JobID, "the job is not linked to the runner yet")
 
+	started := time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)
 	_, err = s.Store.CreateOrUpdateJob(s.adminCtx, params.Job{
 		WorkflowJobID:  4242,
 		Status:         string(params.JobStatusInProgress),
 		RunnerName:     instance.Name,
+		StartedAt:      started,
 		WorkflowRunURL: "https://github.com/jclab/app/actions/runs/1",
+		JobURL:         "https://github.com/jclab/app/actions/runs/1/job/4242",
+		RunAttempt:     2,
+		WorkflowName:   "CI",
+		HeadBranch:     "main",
 	})
 	s.Require().NoError(err)
 	usage := s.usageOf(instance)
@@ -194,6 +200,38 @@ func (s *UsageTestSuite) TestJobIsRecorded() {
 	s.Require().Equal("build", usage.JobName)
 	s.Require().Equal("jclab/app", usage.JobRepository)
 	s.Require().Equal("https://github.com/jclab/app/actions/runs/1", usage.WorkflowRunURL)
+	s.Require().Equal("https://github.com/jclab/app/actions/runs/1/job/4242", usage.JobURL)
+	s.Require().Equal(int64(2), usage.RunAttempt)
+	s.Require().Equal("CI", usage.WorkflowName)
+	s.Require().Equal("main", usage.HeadBranch)
+	s.Require().True(started.Equal(*usage.JobStartedAt))
+	s.Require().Empty(usage.JobConclusion)
+	s.Require().Nil(usage.JobCompletedAt)
+
+	// The completed update brings the conclusion. Fields it does not carry
+	// are kept.
+	completed := started.Add(10 * time.Minute)
+	_, err = s.Store.CreateOrUpdateJob(s.adminCtx, params.Job{
+		WorkflowJobID: 4242,
+		Status:        string(params.JobStatusCompleted),
+		Conclusion:    "success",
+		RunnerName:    instance.Name,
+		StartedAt:     started,
+		CompletedAt:   completed,
+	})
+	s.Require().NoError(err)
+	usage = s.usageOf(instance)
+	s.Require().Equal("success", usage.JobConclusion)
+	s.Require().True(completed.Equal(*usage.JobCompletedAt))
+	s.Require().Equal("CI", usage.WorkflowName)
+	s.Require().Equal("https://github.com/jclab/app/actions/runs/1/job/4242", usage.JobURL)
+
+	all, err := s.Store.ListAllInstanceUsage(s.adminCtx, params.InstanceUsageFilter{InstanceName: instance.Name})
+	s.Require().NoError(err)
+	s.Require().Len(all, 1)
+	s.Require().Equal("CI", all[0].WorkflowName)
+	s.Require().Equal("success", all[0].JobConclusion)
+	s.Require().NotNil(all[0].JobCompletedAt)
 }
 
 func (s *UsageTestSuite) TestScaleSetInstanceOpensUsage() {

@@ -285,6 +285,31 @@ export function modelBadge(record: InstanceUsage): { text: string; variant: Badg
 	return { text: 'Pending price', variant: 'gray', title: 'The price has not been looked up yet' };
 }
 
+/** Badge for the conclusion of the job that ran on an instance. */
+export function jobConclusionBadge(conclusion: string | undefined): { text: string; variant: BadgeVariant } | null {
+	switch (conclusion) {
+		case undefined:
+		case '':
+			return null;
+		case 'success':
+			return { text: 'Success', variant: 'success' };
+		case 'failure':
+		case 'timed_out':
+		case 'startup_failure':
+			return { text: conclusion === 'failure' ? 'Failure' : conclusion.replace('_', ' '), variant: 'error' };
+		case 'cancelled':
+			return { text: 'Cancelled', variant: 'gray' };
+		default:
+			return { text: conclusion.replace('_', ' '), variant: 'gray' };
+	}
+}
+
+/** Workflow and branch of the job that ran on an instance, e.g. "CI · main". */
+export function workflowText(record: InstanceUsage): string {
+	const attempt = record.run_attempt && record.run_attempt > 1 ? `attempt ${record.run_attempt}` : '';
+	return [record.workflow_name, record.head_branch, attempt].filter(Boolean).join(' · ');
+}
+
 /** Human readable name of a provisioning model key. */
 export function modelLabel(key: string | undefined): string {
 	if (key === 'standard') return 'On-demand';

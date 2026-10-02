@@ -242,6 +242,12 @@ func formatInstanceUsage(response params.InstanceUsagePaginatedResponse) {
 		if u.JobRepository != "" {
 			job = fmt.Sprintf("%s: %s", u.JobRepository, u.JobName)
 		}
+		if u.WorkflowName != "" {
+			job = fmt.Sprintf("%s (%s)", job, u.WorkflowName)
+		}
+		if u.JobConclusion != "" {
+			job = fmt.Sprintf("%s [%s]", job, u.JobConclusion)
+		}
 		t.AppendRow(table.Row{
 			u.InstanceName, u.Flavor, u.ProvisioningModel, started, ended,
 			formatHours(u.RangeBilledSeconds), hourly, formatMoney(u.RangeCost, u.Currency), u.PriceStatus, job,
