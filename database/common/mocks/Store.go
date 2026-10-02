@@ -5056,6 +5056,68 @@ func (_c *Store_ListInstanceUsage_Call) RunAndReturn(run func(context.Context, p
 	return _c
 }
 
+// ListInstanceUsagePendingEgress provides a mock function with given fields: ctx, refreshBefore, endedBefore, retryErrorsBefore, limit
+func (_m *Store) ListInstanceUsagePendingEgress(ctx context.Context, refreshBefore time.Time, endedBefore time.Time, retryErrorsBefore time.Time, limit int) ([]params.InstanceUsage, error) {
+	ret := _m.Called(ctx, refreshBefore, endedBefore, retryErrorsBefore, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListInstanceUsagePendingEgress")
+	}
+
+	var r0 []params.InstanceUsage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, time.Time, int) ([]params.InstanceUsage, error)); ok {
+		return rf(ctx, refreshBefore, endedBefore, retryErrorsBefore, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, time.Time, time.Time, time.Time, int) []params.InstanceUsage); ok {
+		r0 = rf(ctx, refreshBefore, endedBefore, retryErrorsBefore, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]params.InstanceUsage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, time.Time, time.Time, time.Time, int) error); ok {
+		r1 = rf(ctx, refreshBefore, endedBefore, retryErrorsBefore, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// Store_ListInstanceUsagePendingEgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListInstanceUsagePendingEgress'
+type Store_ListInstanceUsagePendingEgress_Call struct {
+	*mock.Call
+}
+
+// ListInstanceUsagePendingEgress is a helper method to define mock.On call
+//   - ctx context.Context
+//   - refreshBefore time.Time
+//   - endedBefore time.Time
+//   - retryErrorsBefore time.Time
+//   - limit int
+func (_e *Store_Expecter) ListInstanceUsagePendingEgress(ctx interface{}, refreshBefore interface{}, endedBefore interface{}, retryErrorsBefore interface{}, limit interface{}) *Store_ListInstanceUsagePendingEgress_Call {
+	return &Store_ListInstanceUsagePendingEgress_Call{Call: _e.mock.On("ListInstanceUsagePendingEgress", ctx, refreshBefore, endedBefore, retryErrorsBefore, limit)}
+}
+
+func (_c *Store_ListInstanceUsagePendingEgress_Call) Run(run func(ctx context.Context, refreshBefore time.Time, endedBefore time.Time, retryErrorsBefore time.Time, limit int)) *Store_ListInstanceUsagePendingEgress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(time.Time), args[2].(time.Time), args[3].(time.Time), args[4].(int))
+	})
+	return _c
+}
+
+func (_c *Store_ListInstanceUsagePendingEgress_Call) Return(_a0 []params.InstanceUsage, _a1 error) *Store_ListInstanceUsagePendingEgress_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *Store_ListInstanceUsagePendingEgress_Call) RunAndReturn(run func(context.Context, time.Time, time.Time, time.Time, int) ([]params.InstanceUsage, error)) *Store_ListInstanceUsagePendingEgress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListInstanceUsagePendingPrice provides a mock function with given fields: ctx, retryErrorsBefore, limit
 func (_m *Store) ListInstanceUsagePendingPrice(ctx context.Context, retryErrorsBefore time.Time, limit int) ([]params.InstanceUsage, error) {
 	ret := _m.Called(ctx, retryErrorsBefore, limit)
@@ -5799,6 +5861,54 @@ func (_c *Store_SetEntityPoolManagerStatus_Call) Return(_a0 error) *Store_SetEnt
 }
 
 func (_c *Store_SetEntityPoolManagerStatus_Call) RunAndReturn(run func(context.Context, params.ForgeEntity, params.PoolManagerStatus) error) *Store_SetEntityPoolManagerStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetInstanceUsageEgress provides a mock function with given fields: ctx, usageID, param
+func (_m *Store) SetInstanceUsageEgress(ctx context.Context, usageID string, param params.SetInstanceUsageEgressParams) error {
+	ret := _m.Called(ctx, usageID, param)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetInstanceUsageEgress")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, params.SetInstanceUsageEgressParams) error); ok {
+		r0 = rf(ctx, usageID, param)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// Store_SetInstanceUsageEgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetInstanceUsageEgress'
+type Store_SetInstanceUsageEgress_Call struct {
+	*mock.Call
+}
+
+// SetInstanceUsageEgress is a helper method to define mock.On call
+//   - ctx context.Context
+//   - usageID string
+//   - param params.SetInstanceUsageEgressParams
+func (_e *Store_Expecter) SetInstanceUsageEgress(ctx interface{}, usageID interface{}, param interface{}) *Store_SetInstanceUsageEgress_Call {
+	return &Store_SetInstanceUsageEgress_Call{Call: _e.mock.On("SetInstanceUsageEgress", ctx, usageID, param)}
+}
+
+func (_c *Store_SetInstanceUsageEgress_Call) Run(run func(ctx context.Context, usageID string, param params.SetInstanceUsageEgressParams)) *Store_SetInstanceUsageEgress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(params.SetInstanceUsageEgressParams))
+	})
+	return _c
+}
+
+func (_c *Store_SetInstanceUsageEgress_Call) Return(_a0 error) *Store_SetInstanceUsageEgress_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *Store_SetInstanceUsageEgress_Call) RunAndReturn(run func(context.Context, string, params.SetInstanceUsageEgressParams) error) *Store_SetInstanceUsageEgress_Call {
 	_c.Call.Return(run)
 	return _c
 }

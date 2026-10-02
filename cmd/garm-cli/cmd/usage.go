@@ -186,6 +186,8 @@ func formatUsageSummary(summary params.UsageSummary) {
 	t.SetTitle(fmt.Sprintf("%s - %s (%s)", summary.Start.Format(time.RFC3339), summary.End.Format(time.RFC3339), summary.TimeZone))
 	t.AppendHeader(table.Row{"Group", "Key", "Instances", "Hours", "Cost"})
 	t.AppendRow(table.Row{"total", "", summary.InstanceCount, formatHours(summary.BilledSeconds), formatMoney(summary.TotalCost, summary.Currency)})
+	t.AppendRow(table.Row{"compute", "", "", "", formatMoney(summary.ComputeCost, summary.Currency)})
+	t.AppendRow(table.Row{"egress", formatBytesIEC(summary.ExternalBytes) + " to the internet (estimate)", "", "", formatMoney(summary.EgressCost, summary.Currency)})
 	t.AppendRow(table.Row{"running", "", summary.RunningCount, "", formatMoney(summary.RunningCost, summary.Currency)})
 	t.AppendSeparator()
 	groups := []struct {
@@ -225,7 +227,7 @@ func formatInstanceUsage(response params.InstanceUsagePaginatedResponse) {
 		return
 	}
 	t := table.NewWriter()
-	t.AppendHeader(table.Row{"Instance", "Flavor", "Model", "Started", "Ended", "Hours", "Hourly", "Cost", "Price", "Job"})
+	t.AppendHeader(table.Row{"Instance", "Flavor", "Model", "Started", "Ended", "Hours", "Hourly", "Cost", "Egress", "Price", "Job"})
 	for _, u := range response.Results {
 		started, ended := "", "running"
 		if u.StartedAt != nil {
@@ -250,7 +252,7 @@ func formatInstanceUsage(response params.InstanceUsagePaginatedResponse) {
 		}
 		t.AppendRow(table.Row{
 			u.InstanceName, u.Flavor, u.ProvisioningModel, started, ended,
-			formatHours(u.RangeBilledSeconds), hourly, formatMoney(u.RangeCost, u.Currency), u.PriceStatus, job,
+			formatHours(u.RangeBilledSeconds), hourly, formatMoney(u.RangeCost+u.RangeEgressCost, u.Currency), egressColumn(u), u.PriceStatus, job,
 		})
 	}
 	fmt.Println(t.Render())
@@ -273,4 +275,33 @@ func init() {
 
 	usageCmd.AddCommand(usageSummaryCmd, usageListCmd)
 	rootCmd.AddCommand(usageCmd)
+}
+
+// formatBytesIEC formats a byte count with binary units, e.g. 1.5 GiB.
+func formatBytesIEC(bytes float64) string {
+	units := []string{"B", "KiB", "MiB", "GiB", "TiB"}
+	unit := 0
+	for bytes >= 1024 && unit < len(units)-1 {
+		bytes /= 1024
+		unit++
+	}
+	if unit == 0 {
+		return fmt.Sprintf("%.0f %s", bytes, units[unit])
+	}
+	return fmt.Sprintf("%.1f %s", bytes, units[unit])
+}
+
+func egressColumn(u params.InstanceUsage) string {
+	switch u.EgressStatus {
+	case params.UsageEgressOK:
+		text := formatBytesIEC(float64(u.EgressExternalBytes))
+		if !u.EgressFinal {
+			text += " (so far)"
+		}
+		return text
+	case params.UsageEgressPending:
+		return ""
+	default:
+		return string(u.EgressStatus)
+	}
 }

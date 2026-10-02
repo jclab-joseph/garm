@@ -571,6 +571,59 @@ definitions:
             $ref: '#/definitions/ForgeCredentials'
         type: array
         x-go-package: github.com/cloudbase/garm/params
+    EgressCharge:
+        description: |-
+            EgressCharge is the estimated cost of the traffic sent to one billed
+            destination.
+        properties:
+            bytes:
+                format: int64
+                type: integer
+                x-go-name: Bytes
+            cost:
+                format: double
+                type: number
+                x-go-name: Cost
+            description:
+                description: Description is the provider's description of the price, e.g. a SKU name.
+                type: string
+                x-go-name: Description
+            destination:
+                description: Destination is the billed destination, e.g. Americas.
+                type: string
+                x-go-name: Destination
+            sku:
+                type: string
+                x-go-name: SKU
+            unit_price:
+                description: UnitPrice is the price of one GiB.
+                format: double
+                type: number
+                x-go-name: UnitPrice
+        type: object
+        x-go-package: github.com/cloudbase/garm-provider-common/params
+    EgressFlow:
+        properties:
+            bytes:
+                format: int64
+                type: integer
+                x-go-name: Bytes
+            continent:
+                description: Continent and Country locate external destinations, when known.
+                type: string
+                x-go-name: Continent
+            country:
+                type: string
+                x-go-name: Country
+            location_type:
+                description: |-
+                    LocationType is the provider's kind of destination, e.g. EXTERNAL
+                    (internet) or CLOUD (inside the provider network).
+                type: string
+                x-go-name: LocationType
+        title: EgressFlow is the traffic sent to one kind of destination.
+        type: object
+        x-go-package: github.com/cloudbase/garm-provider-common/params
     EndpointType:
         type: string
         x-go-package: github.com/cloudbase/garm/params
@@ -1379,6 +1432,55 @@ definitions:
                 x-go-name: UpdatedAt
         type: object
         x-go-package: github.com/cloudbase/garm/params
+    InstanceEgress:
+        description: and the estimated cost of the part that is billed.
+        properties:
+            charges:
+                description: Charges are the billed parts of Flows.
+                items:
+                    $ref: '#/definitions/EgressCharge'
+                type: array
+                x-go-name: Charges
+            cost:
+                description: Cost is the sum of the cost of Charges.
+                format: double
+                type: number
+                x-go-name: Cost
+            currency:
+                description: Currency is the ISO 4217 code of all costs, e.g. USD.
+                type: string
+                x-go-name: Currency
+            end:
+                format: date-time
+                type: string
+                x-go-name: End
+            flows:
+                description: Flows breaks the sent bytes down by destination.
+                items:
+                    $ref: '#/definitions/EgressFlow'
+                type: array
+                x-go-name: Flows
+            sent_bytes:
+                description: |-
+                    SentBytes is the total the instance sent, as measured by the
+                    provider independently of Flows, if available (e.g. including
+                    packet headers). 0 if unknown.
+                format: int64
+                type: integer
+                x-go-name: SentBytes
+            start:
+                format: date-time
+                type: string
+                x-go-name: Start
+            warnings:
+                description: Warnings lists traffic that could not be priced.
+                items:
+                    type: string
+                type: array
+                x-go-name: Warnings
+        title: InstanceEgress is the network traffic an instance sent in a time window,
+        type: object
+        x-go-package: github.com/cloudbase/garm-provider-common/params
     InstanceMetadata:
         properties:
             agent_mode:
@@ -1536,6 +1638,39 @@ definitions:
             currency:
                 type: string
                 x-go-name: Currency
+            egress:
+                $ref: '#/definitions/InstanceEgress'
+            egress_bytes:
+                format: int64
+                type: integer
+                x-go-name: EgressBytes
+            egress_checked_at:
+                format: date-time
+                type: string
+                x-go-name: EgressCheckedAt
+            egress_cost:
+                format: double
+                type: number
+                x-go-name: EgressCost
+            egress_currency:
+                type: string
+                x-go-name: EgressCurrency
+            egress_error:
+                type: string
+                x-go-name: EgressError
+            egress_external_bytes:
+                format: int64
+                type: integer
+                x-go-name: EgressExternalBytes
+            egress_final:
+                type: boolean
+                x-go-name: EgressFinal
+            egress_sent_bytes:
+                format: int64
+                type: integer
+                x-go-name: EgressSentBytes
+            egress_status:
+                $ref: '#/definitions/UsageEgressStatus'
             end_reason:
                 $ref: '#/definitions/UsageEndReason'
             ended_at:
@@ -1647,6 +1782,20 @@ definitions:
                 format: double
                 type: number
                 x-go-name: RangeCost
+            range_egress_cost:
+                description: |-
+                    RangeEgressCost is the part of EgressCost in the requested date range,
+                    prorated by run time.
+                format: double
+                type: number
+                x-go-name: RangeEgressCost
+            range_external_bytes:
+                description: |-
+                    RangeExternalBytes is the part of EgressExternalBytes in the range,
+                    prorated by run time.
+                format: double
+                type: number
+                x-go-name: RangeExternalBytes
             run_attempt:
                 format: int64
                 type: integer
@@ -2859,6 +3008,12 @@ definitions:
                 x-go-name: Name
         type: object
         x-go-package: github.com/cloudbase/garm/params
+    UsageEgressStatus:
+        description: |-
+            UsageEgressStatus is the state of the egress measurement of an instance
+            usage record.
+        type: string
+        x-go-package: github.com/cloudbase/garm/params
     UsageEndReason:
         title: UsageEndReason tells why an instance usage record was closed.
         type: string
@@ -2870,9 +3025,14 @@ definitions:
                 type: number
                 x-go-name: BilledSeconds
             cost:
+                description: Cost is the compute cost plus EgressCost.
                 format: double
                 type: number
                 x-go-name: Cost
+            egress_cost:
+                format: double
+                type: number
+                x-go-name: EgressCost
             instance_count:
                 format: int64
                 type: integer
@@ -2927,13 +3087,28 @@ definitions:
                     $ref: '#/definitions/UsageGroup'
                 type: array
                 x-go-name: ByProvisioningModel
+            compute_cost:
+                format: double
+                type: number
+                x-go-name: ComputeCost
             currency:
                 type: string
                 x-go-name: Currency
+            egress_cost:
+                format: double
+                type: number
+                x-go-name: EgressCost
             end:
                 format: date-time
                 type: string
                 x-go-name: End
+            external_bytes:
+                description: |-
+                    ExternalBytes is the internet traffic of the instances, prorated to
+                    the range like EgressCost.
+                format: double
+                type: number
+                x-go-name: ExternalBytes
             instance_count:
                 format: int64
                 type: integer
@@ -2955,6 +3130,7 @@ definitions:
                 type: string
                 x-go-name: TimeZone
             total_cost:
+                description: TotalCost is ComputeCost plus EgressCost.
                 format: double
                 type: number
                 x-go-name: TotalCost

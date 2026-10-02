@@ -35,6 +35,22 @@ const (
 	UsagePriceUnsupported UsagePriceStatus = "unsupported"
 )
 
+// UsageEgressStatus is the state of the egress measurement of an instance
+// usage record.
+type UsageEgressStatus string
+
+const (
+	// UsageEgressPending means the egress has not been measured yet.
+	UsageEgressPending UsageEgressStatus = "pending"
+	// UsageEgressOK means the egress fields are set. They are final once
+	// EgressFinal is set; for running instances they are refreshed.
+	UsageEgressOK UsageEgressStatus = "ok"
+	// UsageEgressError means the last measurement failed; it is retried.
+	UsageEgressError UsageEgressStatus = "error"
+	// UsageEgressUnsupported means the provider can't measure egress.
+	UsageEgressUnsupported UsageEgressStatus = "unsupported"
+)
+
 // UsageEndReason tells why an instance usage record was closed.
 type UsageEndReason string
 
@@ -110,6 +126,22 @@ type InstanceUsage struct {
 	JobStartedAt   *time.Time `json:"job_started_at,omitempty"`
 	JobCompletedAt *time.Time `json:"job_completed_at,omitempty"`
 
+	// Egress is the traffic the instance sent, measured by the provider.
+	// EgressCost is the estimated cost of its billed (internet) part, in
+	// EgressCurrency. Only internet traffic is billed: EgressExternalBytes;
+	// EgressBytes is all traffic. Measurements are refreshed while the
+	// instance runs and final (EgressFinal) once it is deleted.
+	EgressStatus        UsageEgressStatus            `json:"egress_status,omitempty"`
+	EgressError         string                       `json:"egress_error,omitempty"`
+	EgressFinal         bool                         `json:"egress_final,omitempty"`
+	EgressCheckedAt     *time.Time                   `json:"egress_checked_at,omitempty"`
+	EgressBytes         int64                        `json:"egress_bytes,omitempty"`
+	EgressExternalBytes int64                        `json:"egress_external_bytes,omitempty"`
+	EgressSentBytes     int64                        `json:"egress_sent_bytes,omitempty"`
+	EgressCost          *float64                     `json:"egress_cost,omitempty"`
+	EgressCurrency      string                       `json:"egress_currency,omitempty"`
+	Egress              *commonParams.InstanceEgress `json:"egress,omitempty"`
+
 	// The fields below are computed when the record is returned by the API.
 
 	// BilledSeconds is the billed run time so far.
@@ -120,6 +152,12 @@ type InstanceUsage struct {
 	// Cost that fall in the requested date range.
 	RangeBilledSeconds float64 `json:"range_billed_seconds"`
 	RangeCost          float64 `json:"range_cost"`
+	// RangeEgressCost is the part of EgressCost in the requested date range,
+	// prorated by run time.
+	RangeEgressCost float64 `json:"range_egress_cost"`
+	// RangeExternalBytes is the part of EgressExternalBytes in the range,
+	// prorated by run time.
+	RangeExternalBytes float64 `json:"range_external_bytes"`
 }
 
 // Running reports whether the instance still exists.
@@ -150,6 +188,7 @@ func (u InstanceUsage) BilledInterval(now time.Time) (start, end time.Time, ok b
 // or rangeEnd leaves that side of the range open.
 func (u InstanceUsage) WithCost(rangeStart, rangeEnd, now time.Time) InstanceUsage {
 	u.BilledSeconds, u.Cost, u.RangeBilledSeconds, u.RangeCost = 0, 0, 0, 0
+	u.RangeEgressCost, u.RangeExternalBytes = 0, 0
 	start, end, ok := u.BilledInterval(now)
 	if !ok {
 		return u
@@ -171,6 +210,13 @@ func (u InstanceUsage) WithCost(rangeStart, rangeEnd, now time.Time) InstanceUsa
 		u.Cost = *u.HourlyPrice * u.BilledSeconds / 3600
 		u.RangeCost = *u.HourlyPrice * u.RangeBilledSeconds / 3600
 	}
+	if u.BilledSeconds > 0 {
+		share := u.RangeBilledSeconds / u.BilledSeconds
+		if u.EgressCost != nil {
+			u.RangeEgressCost = *u.EgressCost * share
+		}
+		u.RangeExternalBytes = float64(u.EgressExternalBytes) * share
+	}
 	return u
 }
 
@@ -191,6 +237,15 @@ type InstanceUsageFilter struct {
 	RunningOnly bool
 }
 
+// SetInstanceUsageEgressParams is the outcome of an egress measurement.
+type SetInstanceUsageEgressParams struct {
+	Status UsageEgressStatus
+	// Final marks the measurement of a deleted instance as complete.
+	Final  bool
+	Egress *commonParams.InstanceEgress
+	Error  string
+}
+
 // SetInstanceUsagePriceParams is the outcome of a price lookup.
 type SetInstanceUsagePriceParams struct {
 	Status UsagePriceStatus
@@ -205,8 +260,10 @@ type UsageGroup struct {
 	// Key identifies the group (e.g. a pool ID, a flavor, a day).
 	Key string `json:"key"`
 	// Label is a human readable name of the group, when Key is an ID.
-	Label         string  `json:"label,omitempty"`
+	Label string `json:"label,omitempty"`
+	// Cost is the compute cost plus EgressCost.
 	Cost          float64 `json:"cost"`
+	EgressCost    float64 `json:"egress_cost"`
 	BilledSeconds float64 `json:"billed_seconds"`
 	InstanceCount int     `json:"instance_count"`
 }
@@ -221,8 +278,14 @@ type UsageSummary struct {
 	TimeZone string    `json:"time_zone"`
 	Currency string    `json:"currency,omitempty"`
 
+	// TotalCost is ComputeCost plus EgressCost.
 	TotalCost     float64 `json:"total_cost"`
+	ComputeCost   float64 `json:"compute_cost"`
+	EgressCost    float64 `json:"egress_cost"`
 	BilledSeconds float64 `json:"billed_seconds"`
+	// ExternalBytes is the internet traffic of the instances, prorated to
+	// the range like EgressCost.
+	ExternalBytes float64 `json:"external_bytes"`
 	InstanceCount int     `json:"instance_count"`
 	// RunningCost and RunningCount cover instances that still exist.
 	RunningCost  float64 `json:"running_cost"`

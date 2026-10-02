@@ -14,7 +14,8 @@
 
 // Package usage prices instance usage records. The records themselves are
 // written by the database layer, alongside the instances; this worker looks
-// up the hourly price of each new record through its provider.
+// up the hourly price of each new record and measures the egress of each
+// instance through its provider.
 package usage
 
 import (
@@ -47,6 +48,20 @@ const (
 	// may download a large price catalog.
 	lookupTimeout = 3 * time.Minute
 	batchSize     = 50
+
+	// egressInterval is how often the worker looks for egress to measure.
+	egressInterval = time.Minute
+	// egressRefresh is how often the egress of running instances is
+	// measured again.
+	egressRefresh = 15 * time.Minute
+	// egressSettleDelay is how long after an instance is deleted its
+	// egress is measured for good: metrics are visible a few minutes after
+	// they are sampled (150s for vm_flow).
+	egressSettleDelay = 5 * time.Minute
+	// egressWindowMargin widens the measured window around the run;
+	// instances are selected by name, so the margin can't add other traffic.
+	egressWindowMargin = 5 * time.Minute
+	egressBatchSize    = 20
 )
 
 type cachedPrice struct {
@@ -118,10 +133,16 @@ func (w *Worker) loop() {
 	defer close(w.done)
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
+	egressTicker := time.NewTicker(egressInterval)
+	defer egressTicker.Stop()
+	w.PricePending()
+	w.MeasureEgress()
 	for {
-		w.PricePending()
 		select {
 		case <-ticker.C:
+			w.PricePending()
+		case <-egressTicker.C:
+			w.MeasureEgress()
 		case <-w.quit:
 			return
 		case <-w.ctx.Done():
@@ -220,4 +241,73 @@ func cacheKey(usage params.InstanceUsage) string {
 		h.Write([]byte{0})
 	}
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+// MeasureEgress measures the egress of the instances that need it.
+func (w *Worker) MeasureEgress() {
+	now := w.now().UTC()
+	pending, err := w.store.ListInstanceUsagePendingEgress(w.ctx,
+		now.Add(-egressRefresh), now.Add(-egressSettleDelay), now.Add(-retryErrorsAfter), egressBatchSize)
+	if err != nil {
+		slog.With(slog.Any("error", err)).ErrorContext(w.ctx, "failed to list instance usage without egress")
+		return
+	}
+	for _, usage := range pending {
+		select {
+		case <-w.quit:
+			return
+		case <-w.ctx.Done():
+			return
+		default:
+		}
+		result := w.measure(usage, now)
+		if err := w.store.SetInstanceUsageEgress(w.ctx, usage.ID, result); err != nil {
+			slog.With(slog.Any("error", err)).ErrorContext(
+				w.ctx, "failed to save instance egress", "instance", usage.InstanceName)
+		}
+	}
+}
+
+func (w *Worker) measure(usage params.InstanceUsage, now time.Time) params.SetInstanceUsageEgressParams {
+	// A deleted instance is measured once; failures are retried.
+	final := usage.EndedAt != nil
+	provider, ok := w.providers[usage.ProviderName]
+	if !ok {
+		return params.SetInstanceUsageEgressParams{
+			Status: params.UsageEgressError,
+			Error:  fmt.Sprintf("provider %q is not configured", usage.ProviderName),
+		}
+	}
+	estimator, ok := provider.(common.EgressEstimator)
+	if !ok {
+		return params.SetInstanceUsageEgressParams{
+			Status: params.UsageEgressUnsupported,
+			Final:  true,
+			Error:  fmt.Sprintf("provider %q can't measure egress", usage.ProviderName),
+		}
+	}
+
+	start := usage.StartedAt.Add(-egressWindowMargin)
+	end := now
+	if usage.EndedAt != nil && usage.EndedAt.Add(egressWindowMargin).Before(now) {
+		end = usage.EndedAt.Add(egressWindowMargin)
+	}
+	base := common.ProviderBaseParams{
+		PoolInfo:   params.Pool{ID: usage.PoolID},
+		ScaleSetID: usage.ScaleSetID,
+		EntityType: usage.EntityType,
+		EntityID:   usage.EntityID,
+	}
+	ctx, cancel := context.WithTimeout(w.ctx, lookupTimeout)
+	defer cancel()
+	egress, err := estimator.GetInstanceEgress(ctx, usage.ProviderID, start, end, base)
+	if err != nil {
+		if errors.Is(err, common.ErrEgressNotSupported) {
+			return params.SetInstanceUsageEgressParams{Status: params.UsageEgressUnsupported, Final: true, Error: err.Error()}
+		}
+		slog.With(slog.Any("error", err)).WarnContext(
+			w.ctx, "failed to measure instance egress", "instance", usage.InstanceName, "provider", usage.ProviderName)
+		return params.SetInstanceUsageEgressParams{Status: params.UsageEgressError, Error: err.Error()}
+	}
+	return params.SetInstanceUsageEgressParams{Status: params.UsageEgressOK, Final: final, Egress: &egress}
 }

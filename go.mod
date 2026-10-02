@@ -111,4 +111,4 @@ require (
 	google.golang.org/protobuf v1.36.12 // indirect
 )
 
-replace github.com/cloudbase/garm-provider-common => github.com/jclab-joseph/garm-provider-common v0.0.0-20260929070048-bca4bbfda536
+replace github.com/cloudbase/garm-provider-common => github.com/jclab-joseph/garm-provider-common v0.0.0-20261002022626-c1af0fbfd63d

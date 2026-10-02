@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	gErrors "github.com/cloudbase/garm-provider-common/errors"
 	"github.com/cloudbase/garm-provider-common/params"
@@ -53,6 +54,17 @@ const (
 // reads bootstrap params from stdin, like CreateInstance, and prints an
 // InstancePrice.
 const GetInstancePriceCommand ExecutionCommand = "GetInstancePrice"
+
+// GetInstanceEgressCommand is optional for providers (see EgressEstimator).
+// The instance is GARM_INSTANCE_ID and the time window is given by
+// GARM_EGRESS_START and GARM_EGRESS_END (RFC 3339). It prints an
+// InstanceEgress.
+const GetInstanceEgressCommand ExecutionCommand = "GetInstanceEgress"
+
+const (
+	EgressStartEnv = "GARM_EGRESS_START"
+	EgressEndEnv   = "GARM_EGRESS_END"
+)
 
 const (
 	// ExitCodeNotFound is an exit code that indicates a Not Found error
@@ -124,6 +136,44 @@ func RunGetInstancePrice(ctx context.Context, provider any, bootstrapParams para
 		return "", fmt.Errorf("failed to get instance price: %w", err)
 	}
 	asJs, err := json.Marshal(price)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal response: %w", err)
+	}
+	return string(asJs), nil
+}
+
+// EgressWindowFromEnv reads the time window of a GetInstanceEgress command.
+func EgressWindowFromEnv() (time.Time, time.Time, error) {
+	start, err := time.Parse(time.RFC3339, os.Getenv(EgressStartEnv))
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid %s: %w", EgressStartEnv, err)
+	}
+	end, err := time.Parse(time.RFC3339, os.Getenv(EgressEndEnv))
+	if err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid %s: %w", EgressEndEnv, err)
+	}
+	if !start.Before(end) {
+		return time.Time{}, time.Time{}, fmt.Errorf("%s must be before %s", EgressStartEnv, EgressEndEnv)
+	}
+	return start, end, nil
+}
+
+// RunGetInstanceEgress runs the GetInstanceEgress command against provider,
+// which must implement EgressEstimator, and returns the egress as JSON.
+func RunGetInstanceEgress(ctx context.Context, provider any, instance string) (string, error) {
+	estimator, ok := provider.(EgressEstimator)
+	if !ok {
+		return "", fmt.Errorf("provider does not support %s", GetInstanceEgressCommand)
+	}
+	start, end, err := EgressWindowFromEnv()
+	if err != nil {
+		return "", err
+	}
+	egress, err := estimator.GetInstanceEgress(ctx, instance, start, end)
+	if err != nil {
+		return "", fmt.Errorf("failed to get instance egress: %w", err)
+	}
+	asJs, err := json.Marshal(egress)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal response: %w", err)
 	}

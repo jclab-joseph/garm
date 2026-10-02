@@ -357,5 +357,38 @@ export function costSoFarText(record: InstanceUsage | null | undefined, fallback
 	if (!record) return '—';
 	if (record.price_status === 'pending') return 'Pending';
 	if (record.hourly_price === undefined || record.hourly_price === null) return '—';
-	return formatCost(record.cost ?? 0, record.currency || fallbackCurrency);
+	return formatCost((record.cost ?? 0) + (record.egress_cost ?? 0), record.currency || fallbackCurrency);
+}
+
+/** Cost of a run in the requested range: compute plus (prorated) egress. */
+export function rangeTotalCost(record: InstanceUsage): number {
+	return (record.range_cost ?? 0) + (record.range_egress_cost ?? 0);
+}
+
+/** Formats a byte count with binary units, e.g. "1.5 GiB". */
+export function formatBytes(bytes: number | null | undefined): string {
+	const value = bytes ?? 0;
+	const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+	let scaled = Math.abs(value);
+	let unit = 0;
+	while (scaled >= 1024 && unit < units.length - 1) {
+		scaled /= 1024;
+		unit++;
+	}
+	const digits = unit === 0 || scaled >= 100 ? 0 : 1;
+	return `${(Math.sign(value) * scaled).toFixed(digits)} ${units[unit]}`;
+}
+
+/** Short description of the egress measurement of a run. */
+export function egressText(record: InstanceUsage): string {
+	switch (record.egress_status) {
+		case 'ok':
+			return `${formatBytes(record.egress_external_bytes)} internet${record.egress_final ? '' : ' (so far)'}`;
+		case 'error':
+			return 'Egress error';
+		case 'unsupported':
+			return 'Egress n/a';
+		default:
+			return record.started_at ? 'Egress pending' : '';
+	}
 }

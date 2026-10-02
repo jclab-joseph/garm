@@ -47,3 +47,26 @@ func TestPriceResultFromExec(t *testing.T) {
 		require.Error(t, err, out)
 	}
 }
+
+func TestEgressResultFromExec(t *testing.T) {
+	egress, err := EgressResultFromExec([]byte(`{"currency":"USD","cost":0.12,"flows":[{"location_type":"EXTERNAL","bytes":1073741824}]}`), nil)
+	require.NoError(t, err)
+	require.Equal(t, 0.12, egress.Cost)
+	require.Len(t, egress.Flows, 1)
+
+	_, err = EgressResultFromExec(nil, errors.New("provider binary failed with stdout: ; stderr: failed to run command: provider does not support GetInstanceEgress"))
+	require.ErrorIs(t, err, runnerCommon.ErrEgressNotSupported)
+	_, err = EgressResultFromExec(nil, errors.New("failed to validate execution environment: unknown GARM_COMMAND: GetInstanceEgress"))
+	require.ErrorIs(t, err, runnerCommon.ErrEgressNotSupported)
+	_, err = EgressResultFromExec(nil, errors.New("403 monitoring.timeSeries.list denied"))
+	require.Error(t, err)
+	require.NotErrorIs(t, err, runnerCommon.ErrEgressNotSupported)
+
+	for _, out := range []string{`nope`, `{"cost":-1}`, `{"cost":0.5}`} {
+		_, err = EgressResultFromExec([]byte(out), nil)
+		require.Error(t, err, out)
+	}
+	// No billed traffic: no currency needed.
+	_, err = EgressResultFromExec([]byte(`{"cost":0}`), nil)
+	require.NoError(t, err)
+}

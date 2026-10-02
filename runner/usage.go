@@ -90,7 +90,7 @@ func newUsageGroups() *usageGroups {
 	return &usageGroups{groups: map[string]*params.UsageGroup{}}
 }
 
-func (g *usageGroups) add(key, label string, cost, seconds float64, countInstance bool) {
+func (g *usageGroups) add(key, label string, cost, egressCost, seconds float64, countInstance bool) {
 	if key == "" {
 		key = unknownGroup
 	}
@@ -100,6 +100,7 @@ func (g *usageGroups) add(key, label string, cost, seconds float64, countInstanc
 		g.groups[key] = group
 	}
 	group.Cost += cost
+	group.EgressCost += egressCost
 	group.BilledSeconds += seconds
 	if countInstance {
 		group.InstanceCount++
@@ -164,30 +165,36 @@ func SummarizeUsage(records []params.InstanceUsage, start, end time.Time, loc *t
 
 	// Every day in the range is listed, including days without usage.
 	for day := startOfDay(start.In(loc)); day.Before(end); day = day.AddDate(0, 0, 1) {
-		byDay.add(day.Format(time.DateOnly), "", 0, 0, false)
+		byDay.add(day.Format(time.DateOnly), "", 0, 0, 0, false)
 	}
 
 	for _, record := range records {
 		u := record.WithCost(start, end, now)
+		cost := u.RangeCost + u.RangeEgressCost
 		summary.InstanceCount++
-		summary.TotalCost += u.RangeCost
+		summary.TotalCost += cost
+		summary.ComputeCost += u.RangeCost
+		summary.EgressCost += u.RangeEgressCost
+		summary.ExternalBytes += u.RangeExternalBytes
 		summary.BilledSeconds += u.RangeBilledSeconds
 		if u.Running() {
 			summary.RunningCount++
-			summary.RunningCost += u.RangeCost
+			summary.RunningCost += cost
 		}
 		if u.HourlyPrice == nil && u.RangeBilledSeconds > 0 {
 			summary.UnpricedCount++
 		}
-		if u.Currency != "" {
-			currencies[u.Currency] = struct{}{}
+		for _, currency := range []string{u.Currency, u.EgressCurrency} {
+			if currency != "" {
+				currencies[currency] = struct{}{}
+			}
 		}
 
-		byModel.add(string(u.ProvisioningModel), "", u.RangeCost, u.RangeBilledSeconds, true)
+		byModel.add(string(u.ProvisioningModel), "", cost, u.RangeEgressCost, u.RangeBilledSeconds, true)
 		poolKey, poolLabel := poolGroup(u)
-		byPool.add(poolKey, poolLabel, u.RangeCost, u.RangeBilledSeconds, true)
-		byFlavor.add(u.Flavor, "", u.RangeCost, u.RangeBilledSeconds, true)
-		byEntity.add(u.EntityID, u.EntityName, u.RangeCost, u.RangeBilledSeconds, true)
+		byPool.add(poolKey, poolLabel, cost, u.RangeEgressCost, u.RangeBilledSeconds, true)
+		byFlavor.add(u.Flavor, "", cost, u.RangeEgressCost, u.RangeBilledSeconds, true)
+		byEntity.add(u.EntityID, u.EntityName, cost, u.RangeEgressCost, u.RangeBilledSeconds, true)
 		addDailyUsage(byDay, u, start, end, loc, now)
 	}
 
@@ -218,7 +225,8 @@ func SummarizeUsage(records []params.InstanceUsage, start, end time.Time, loc *t
 	return summary
 }
 
-// addDailyUsage splits the in-range run time of u over calendar days.
+// addDailyUsage splits the in-range run time of u, and its compute and
+// egress cost, over calendar days. Egress is prorated by run time.
 func addDailyUsage(byDay *usageGroups, u params.InstanceUsage, start, end time.Time, loc *time.Location, now time.Time) {
 	runStart, runEnd, ok := u.BilledInterval(now)
 	if !ok {
@@ -241,11 +249,14 @@ func addDailyUsage(byDay *usageGroups, u params.InstanceUsage, start, end time.T
 		}
 		if to.After(from) {
 			seconds := to.Sub(from).Seconds()
-			cost := 0.0
+			cost, egressCost := 0.0, 0.0
 			if u.HourlyPrice != nil {
 				cost = *u.HourlyPrice * seconds / 3600
 			}
-			byDay.add(dayStart.Format(time.DateOnly), "", cost, seconds, false)
+			if u.EgressCost != nil && u.BilledSeconds > 0 {
+				egressCost = *u.EgressCost * seconds / u.BilledSeconds
+			}
+			byDay.add(dayStart.Format(time.DateOnly), "", cost+egressCost, egressCost, seconds, false)
 		}
 		dayStart = dayEnd
 	}

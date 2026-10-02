@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -92,4 +93,31 @@ func TestGetInstancePriceNotSupported(t *testing.T) {
 	_, err := provider.(common.PriceEstimator).GetInstancePrice(context.Background(),
 		commonParams.BootstrapInstance{Name: "runner-1", Flavor: "f"}, common.ProviderBaseParams{})
 	require.ErrorIs(t, err, common.ErrPriceNotSupported)
+}
+
+func TestGetInstanceEgress(t *testing.T) {
+	provider, dir := fakeProvider(t, `{"currency":"USD","cost":0.12,"sent_bytes":2000,"flows":[{"location_type":"EXTERNAL","continent":"America","bytes":1073741824}]}`, false)
+	estimator, ok := provider.(common.EgressEstimator)
+	require.True(t, ok)
+
+	start := time.Date(2026, 10, 2, 1, 0, 0, 0, time.UTC)
+	egress, err := estimator.GetInstanceEgress(context.Background(), "us-east4-a/garm-runner", start, start.Add(time.Hour),
+		common.ProviderBaseParams{PoolInfo: params.Pool{ID: "pool-1"}})
+	require.NoError(t, err)
+	require.Equal(t, 0.12, egress.Cost)
+	require.Equal(t, int64(2000), egress.SentBytes)
+
+	env, err := os.ReadFile(filepath.Join(dir, "env"))
+	require.NoError(t, err)
+	lines := strings.Split(string(env), "\n")
+	require.Contains(t, lines, "GARM_COMMAND=GetInstanceEgress")
+	require.Contains(t, lines, "GARM_INSTANCE_ID=us-east4-a/garm-runner")
+	require.Contains(t, lines, "GARM_EGRESS_START=2026-10-02T01:00:00Z")
+	require.Contains(t, lines, "GARM_EGRESS_END=2026-10-02T02:00:00Z")
+}
+
+func TestGetInstanceEgressNotSupported(t *testing.T) {
+	provider, _ := fakeProvider(t, "failed to validate execution environment: unknown GARM_COMMAND: GetInstanceEgress", true)
+	_, err := provider.(common.EgressEstimator).GetInstanceEgress(context.Background(), "x", time.Now().Add(-time.Hour), time.Now(), common.ProviderBaseParams{})
+	require.ErrorIs(t, err, common.ErrEgressNotSupported)
 }

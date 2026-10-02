@@ -26,6 +26,8 @@ docs/CreateRepoParams.md
 docs/CreateScaleSetParams.md
 docs/CreateTemplateParams.md
 docs/CredentialsApi.md
+docs/EgressCharge.md
+docs/EgressFlow.md
 docs/EndpointsApi.md
 docs/Enterprise.md
 docs/EnterprisesApi.md
@@ -51,6 +53,7 @@ docs/HookInfo.md
 docs/HooksApi.md
 docs/InstallWebhookParams.md
 docs/Instance.md
+docs/InstanceEgress.md
 docs/InstanceMetadata.md
 docs/InstancePrice.md
 docs/InstancePriceComponent.md

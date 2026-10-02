@@ -104,3 +104,26 @@ func TestInstanceUsageWithCost(t *testing.T) {
 		})
 	}
 }
+
+func TestInstanceUsageWithEgressCost(t *testing.T) {
+	day := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	usage := InstanceUsage{
+		StartedAt:           timePtr(day.Add(-time.Hour)),
+		EndedAt:             timePtr(day.Add(3 * time.Hour)),
+		HourlyPrice:         floatPtr(1),
+		EgressCost:          floatPtr(0.4),
+		EgressExternalBytes: 4000,
+	}
+	// 3 of the 4 hours are in the range: egress is prorated by run time.
+	got := usage.WithCost(day, day.Add(24*time.Hour), day.Add(48*time.Hour))
+	require.InDelta(t, 3, got.RangeCost, 1e-9)
+	require.InDelta(t, 0.3, got.RangeEgressCost, 1e-9)
+	require.InDelta(t, 3000, got.RangeExternalBytes, 1e-9)
+
+	// No egress measurement yet.
+	usage.EgressCost = nil
+	usage.EgressExternalBytes = 0
+	got = usage.WithCost(day, day.Add(24*time.Hour), day.Add(48*time.Hour))
+	require.Zero(t, got.RangeEgressCost)
+	require.Zero(t, got.RangeExternalBytes)
+}

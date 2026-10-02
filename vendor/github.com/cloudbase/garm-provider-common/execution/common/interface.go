@@ -16,6 +16,7 @@ package common
 
 import (
 	"context"
+	"time"
 
 	"github.com/cloudbase/garm-provider-common/params"
 )
@@ -49,4 +50,14 @@ type PriceEstimator interface {
 	// GetInstancePrice returns the estimated hourly price of an instance
 	// created from bootstrapParams.
 	GetInstancePrice(ctx context.Context, bootstrapParams params.BootstrapInstance) (params.InstancePrice, error)
+}
+
+// EgressEstimator is implemented by providers that can report the network
+// traffic of the instances they created, and its estimated cost. It is
+// optional: providers that do not implement it fail the GetInstanceEgress
+// command.
+type EgressEstimator interface {
+	// GetInstanceEgress returns the traffic instance sent between start and
+	// end. It must work for instances that were already deleted.
+	GetInstanceEgress(ctx context.Context, instance string, start, end time.Time) (params.InstanceEgress, error)
 }

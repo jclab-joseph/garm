@@ -81,6 +81,17 @@ type InstanceUsage struct {
 	JobConclusion  string
 	JobStartedAt   *time.Time
 	JobCompletedAt *time.Time
+
+	EgressStatus        params.UsageEgressStatus `gorm:"index"`
+	EgressError         string
+	EgressFinal         bool `gorm:"index"`
+	EgressCheckedAt     *time.Time
+	EgressBytes         int64
+	EgressExternalBytes int64
+	EgressSentBytes     int64
+	EgressCost          *float64
+	EgressCurrency      string
+	Egress              datatypes.JSON
 }
 
 func (u *InstanceUsage) BeforeCreate(_ *gorm.DB) error {
@@ -204,6 +215,7 @@ func (s *sqlDatabase) createInstanceUsage(tx *gorm.DB, instance Instance, src us
 		OSArch:       instance.OSArch,
 		ExtraSpecs:   src.ExtraSpecs,
 		PriceStatus:  params.UsagePricePending,
+		EgressStatus: params.UsageEgressPending,
 	}
 	if usage.OSType == "" {
 		usage.OSType = src.OSType
@@ -312,39 +324,55 @@ func (s *sqlDatabase) recordInstanceUsageJob(tx *gorm.DB, job WorkflowJob, updat
 
 func (s *sqlDatabase) sqlToParamsInstanceUsage(u InstanceUsage) (params.InstanceUsage, error) {
 	ret := params.InstanceUsage{
-		ID:                u.ID.String(),
-		InstanceID:        u.InstanceID.String(),
-		InstanceName:      u.InstanceName,
-		ProviderID:        u.ProviderID,
-		ProviderName:      u.ProviderName,
-		EntityType:        u.EntityType,
-		EntityID:          u.EntityID,
-		EntityName:        u.EntityName,
-		Flavor:            u.Flavor,
-		Image:             u.Image,
-		OSType:            u.OSType,
-		OSArch:            u.OSArch,
-		CreatedAt:         u.CreatedAt,
-		StartedAt:         u.StartedAt,
-		EndedAt:           u.EndedAt,
-		EndReason:         u.EndReason,
-		ProvisioningModel: u.ProvisioningModel,
-		HourlyPrice:       u.HourlyPrice,
-		Currency:          u.Currency,
-		PriceStatus:       u.PriceStatus,
-		PriceError:        u.PriceError,
-		PricedAt:          u.PricedAt,
-		JobID:             u.JobID,
-		JobName:           u.JobName,
-		JobRepository:     u.JobRepository,
-		WorkflowRunURL:    u.WorkflowRunURL,
-		JobURL:            u.JobURL,
-		RunAttempt:        u.RunAttempt,
-		WorkflowName:      u.WorkflowName,
-		HeadBranch:        u.HeadBranch,
-		JobConclusion:     u.JobConclusion,
-		JobStartedAt:      u.JobStartedAt,
-		JobCompletedAt:    u.JobCompletedAt,
+		ID:                  u.ID.String(),
+		InstanceID:          u.InstanceID.String(),
+		InstanceName:        u.InstanceName,
+		ProviderID:          u.ProviderID,
+		ProviderName:        u.ProviderName,
+		EntityType:          u.EntityType,
+		EntityID:            u.EntityID,
+		EntityName:          u.EntityName,
+		Flavor:              u.Flavor,
+		Image:               u.Image,
+		OSType:              u.OSType,
+		OSArch:              u.OSArch,
+		CreatedAt:           u.CreatedAt,
+		StartedAt:           u.StartedAt,
+		EndedAt:             u.EndedAt,
+		EndReason:           u.EndReason,
+		ProvisioningModel:   u.ProvisioningModel,
+		HourlyPrice:         u.HourlyPrice,
+		Currency:            u.Currency,
+		PriceStatus:         u.PriceStatus,
+		PriceError:          u.PriceError,
+		PricedAt:            u.PricedAt,
+		JobID:               u.JobID,
+		JobName:             u.JobName,
+		JobRepository:       u.JobRepository,
+		WorkflowRunURL:      u.WorkflowRunURL,
+		JobURL:              u.JobURL,
+		RunAttempt:          u.RunAttempt,
+		WorkflowName:        u.WorkflowName,
+		HeadBranch:          u.HeadBranch,
+		JobConclusion:       u.JobConclusion,
+		JobStartedAt:        u.JobStartedAt,
+		JobCompletedAt:      u.JobCompletedAt,
+		EgressStatus:        u.EgressStatus,
+		EgressError:         u.EgressError,
+		EgressFinal:         u.EgressFinal,
+		EgressCheckedAt:     u.EgressCheckedAt,
+		EgressBytes:         u.EgressBytes,
+		EgressExternalBytes: u.EgressExternalBytes,
+		EgressSentBytes:     u.EgressSentBytes,
+		EgressCost:          u.EgressCost,
+		EgressCurrency:      u.EgressCurrency,
+	}
+	if len(u.Egress) > 0 {
+		var egress commonParams.InstanceEgress
+		if err := json.Unmarshal(u.Egress, &egress); err != nil {
+			return params.InstanceUsage{}, fmt.Errorf("error decoding instance egress: %w", err)
+		}
+		ret.Egress = &egress
 	}
 	if len(u.ExtraSpecs) > 0 {
 		ret.ExtraSpecs = json.RawMessage(u.ExtraSpecs)
@@ -522,6 +550,75 @@ func (s *sqlDatabase) SetInstanceUsagePrice(_ context.Context, usageID string, p
 	q := s.conn.Model(&InstanceUsage{}).Where("id = ?", id).Updates(updates)
 	if q.Error != nil {
 		return fmt.Errorf("error setting instance usage price: %w", q.Error)
+	}
+	if q.RowsAffected == 0 {
+		return runnerErrors.ErrNotFound
+	}
+	return nil
+}
+
+// ListInstanceUsagePendingEgress lists started instances whose egress needs
+// measuring: running instances last measured before refreshBefore (or never),
+// deleted instances that ended before endedBefore and have no final
+// measurement, retrying failures measured before retryErrorsBefore.
+func (s *sqlDatabase) ListInstanceUsagePendingEgress(_ context.Context, refreshBefore, endedBefore, retryErrorsBefore time.Time, limit int) ([]params.InstanceUsage, error) {
+	var rows []InstanceUsage
+	q := s.conn.Model(&InstanceUsage{}).
+		Where("started_at IS NOT NULL AND provider_id <> '' AND (egress_final = ? OR egress_final IS NULL)", false).
+		Where("egress_status <> ? OR egress_checked_at IS NULL OR egress_checked_at < ?", params.UsageEgressError, retryErrorsBefore).
+		Where("(ended_at IS NULL AND (egress_checked_at IS NULL OR egress_checked_at < ?)) OR (ended_at IS NOT NULL AND ended_at < ?)",
+			refreshBefore, endedBefore).
+		Order("egress_checked_at IS NOT NULL").
+		Order("started_at").
+		Limit(limit).
+		Find(&rows)
+	if q.Error != nil {
+		return nil, fmt.Errorf("error listing instance usage without egress: %w", q.Error)
+	}
+	results := make([]params.InstanceUsage, 0, len(rows))
+	for _, row := range rows {
+		usage, err := s.sqlToParamsInstanceUsage(row)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, usage)
+	}
+	return results, nil
+}
+
+func (s *sqlDatabase) SetInstanceUsageEgress(_ context.Context, usageID string, param params.SetInstanceUsageEgressParams) error {
+	id, err := uuid.Parse(usageID)
+	if err != nil {
+		return runnerErrors.NewBadRequestError("invalid usage ID %q", usageID)
+	}
+	updates := map[string]any{
+		"egress_status":     param.Status,
+		"egress_error":      param.Error,
+		"egress_final":      param.Final,
+		"egress_checked_at": time.Now().UTC(),
+	}
+	if param.Egress != nil {
+		asJs, err := json.Marshal(param.Egress)
+		if err != nil {
+			return fmt.Errorf("error encoding instance egress: %w", err)
+		}
+		var total, external int64
+		for _, flow := range param.Egress.Flows {
+			total += flow.Bytes
+			if flow.LocationType == "EXTERNAL" {
+				external += flow.Bytes
+			}
+		}
+		updates["egress"] = datatypes.JSON(asJs)
+		updates["egress_bytes"] = total
+		updates["egress_external_bytes"] = external
+		updates["egress_sent_bytes"] = param.Egress.SentBytes
+		updates["egress_cost"] = param.Egress.Cost
+		updates["egress_currency"] = param.Egress.Currency
+	}
+	q := s.conn.Model(&InstanceUsage{}).Where("id = ?", id).Updates(updates)
+	if q.Error != nil {
+		return fmt.Errorf("error setting instance usage egress: %w", q.Error)
 	}
 	if q.RowsAffected == 0 {
 		return runnerErrors.ErrNotFound

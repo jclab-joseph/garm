@@ -930,6 +930,80 @@ export interface CreateTemplateParams {
     'os_type'?: string;
 }
 /**
+ * EgressCharge is the estimated cost of the traffic sent to one billed destination.
+ * @export
+ * @interface EgressCharge
+ */
+export interface EgressCharge {
+    /**
+     * 
+     * @type {number}
+     * @memberof EgressCharge
+     */
+    'bytes'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof EgressCharge
+     */
+    'cost'?: number;
+    /**
+     * Description is the provider\'s description of the price, e.g. a SKU name.
+     * @type {string}
+     * @memberof EgressCharge
+     */
+    'description'?: string;
+    /**
+     * Destination is the billed destination, e.g. Americas.
+     * @type {string}
+     * @memberof EgressCharge
+     */
+    'destination'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof EgressCharge
+     */
+    'sku'?: string;
+    /**
+     * UnitPrice is the price of one GiB.
+     * @type {number}
+     * @memberof EgressCharge
+     */
+    'unit_price'?: number;
+}
+/**
+ * 
+ * @export
+ * @interface EgressFlow
+ */
+export interface EgressFlow {
+    /**
+     * 
+     * @type {number}
+     * @memberof EgressFlow
+     */
+    'bytes'?: number;
+    /**
+     * Continent and Country locate external destinations, when known.
+     * @type {string}
+     * @memberof EgressFlow
+     */
+    'continent'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof EgressFlow
+     */
+    'country'?: string;
+    /**
+     * LocationType is the provider\'s kind of destination, e.g. EXTERNAL (internet) or CLOUD (inside the provider network).
+     * @type {string}
+     * @memberof EgressFlow
+     */
+    'location_type'?: string;
+}
+/**
  * 
  * @export
  * @interface Enterprise
@@ -2132,6 +2206,61 @@ export interface Instance {
     'updated_at'?: string;
 }
 /**
+ * and the estimated cost of the part that is billed.
+ * @export
+ * @interface InstanceEgress
+ */
+export interface InstanceEgress {
+    /**
+     * Charges are the billed parts of Flows.
+     * @type {Array<EgressCharge>}
+     * @memberof InstanceEgress
+     */
+    'charges'?: Array<EgressCharge>;
+    /**
+     * Cost is the sum of the cost of Charges.
+     * @type {number}
+     * @memberof InstanceEgress
+     */
+    'cost'?: number;
+    /**
+     * Currency is the ISO 4217 code of all costs, e.g. USD.
+     * @type {string}
+     * @memberof InstanceEgress
+     */
+    'currency'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceEgress
+     */
+    'end'?: string;
+    /**
+     * Flows breaks the sent bytes down by destination.
+     * @type {Array<EgressFlow>}
+     * @memberof InstanceEgress
+     */
+    'flows'?: Array<EgressFlow>;
+    /**
+     * SentBytes is the total the instance sent, as measured by the provider independently of Flows, if available (e.g. including packet headers). 0 if unknown.
+     * @type {number}
+     * @memberof InstanceEgress
+     */
+    'sent_bytes'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceEgress
+     */
+    'start'?: string;
+    /**
+     * Warnings lists traffic that could not be priced.
+     * @type {Array<string>}
+     * @memberof InstanceEgress
+     */
+    'warnings'?: Array<string>;
+}
+/**
  * 
  * @export
  * @interface InstanceMetadata
@@ -2340,6 +2469,66 @@ export interface InstanceUsage {
     'currency'?: string;
     /**
      * 
+     * @type {InstanceEgress}
+     * @memberof InstanceUsage
+     */
+    'egress'?: InstanceEgress;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'egress_bytes'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'egress_checked_at'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'egress_cost'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'egress_currency'?: string;
+    /**
+     * 
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'egress_error'?: string;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'egress_external_bytes'?: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof InstanceUsage
+     */
+    'egress_final'?: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'egress_sent_bytes'?: number;
+    /**
+     * UsageEgressStatus is the state of the egress measurement of an instance usage record.
+     * @type {string}
+     * @memberof InstanceUsage
+     */
+    'egress_status'?: string;
+    /**
+     * 
      * @type {string}
      * @memberof InstanceUsage
      */
@@ -2530,6 +2719,18 @@ export interface InstanceUsage {
      * @memberof InstanceUsage
      */
     'range_cost'?: number;
+    /**
+     * RangeEgressCost is the part of EgressCost in the requested date range, prorated by run time.
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'range_egress_cost'?: number;
+    /**
+     * RangeExternalBytes is the part of EgressExternalBytes in the range, prorated by run time.
+     * @type {number}
+     * @memberof InstanceUsage
+     */
+    'range_external_bytes'?: number;
     /**
      * 
      * @type {number}
@@ -4356,11 +4557,17 @@ export interface UsageGroup {
      */
     'billed_seconds'?: number;
     /**
-     * 
+     * Cost is the compute cost plus EgressCost.
      * @type {number}
      * @memberof UsageGroup
      */
     'cost'?: number;
+    /**
+     * 
+     * @type {number}
+     * @memberof UsageGroup
+     */
+    'egress_cost'?: number;
     /**
      * 
      * @type {number}
@@ -4424,16 +4631,34 @@ export interface UsageSummary {
     'by_provisioning_model'?: Array<UsageGroup>;
     /**
      * 
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'compute_cost'?: number;
+    /**
+     * 
      * @type {string}
      * @memberof UsageSummary
      */
     'currency'?: string;
     /**
      * 
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'egress_cost'?: number;
+    /**
+     * 
      * @type {string}
      * @memberof UsageSummary
      */
     'end'?: string;
+    /**
+     * ExternalBytes is the internet traffic of the instances, prorated to the range like EgressCost.
+     * @type {number}
+     * @memberof UsageSummary
+     */
+    'external_bytes'?: number;
     /**
      * 
      * @type {number}
@@ -4465,7 +4690,7 @@ export interface UsageSummary {
      */
     'time_zone'?: string;
     /**
-     * 
+     * TotalCost is ComputeCost plus EgressCost.
      * @type {number}
      * @memberof UsageSummary
      */

@@ -31,16 +31,19 @@ import (
 	commonMocks "github.com/cloudbase/garm/runner/common/mocks"
 )
 
-// pricedProvider is a provider that implements common.PriceEstimator.
+// pricedProvider is a provider that implements common.PriceEstimator and
+// common.EgressEstimator.
 type pricedProvider struct {
 	*commonMocks.Provider
 	*commonMocks.PriceEstimator
+	*commonMocks.EgressEstimator
 }
 
 func newPricedProvider(t *testing.T) *pricedProvider {
 	return &pricedProvider{
-		Provider:       commonMocks.NewProvider(t),
-		PriceEstimator: commonMocks.NewPriceEstimator(t),
+		Provider:        commonMocks.NewProvider(t),
+		PriceEstimator:  commonMocks.NewPriceEstimator(t),
+		EgressEstimator: commonMocks.NewEgressEstimator(t),
 	}
 }
 
@@ -132,7 +135,82 @@ func TestStartClosesOrphans(t *testing.T) {
 	w := NewWorker(context.Background(), store, nil)
 	store.EXPECT().CloseOrphanedInstanceUsage(mock.Anything).Return(int64(2), nil).Once()
 	store.EXPECT().ListInstanceUsagePendingPrice(mock.Anything, mock.Anything, batchSize).Return(nil, nil).Maybe()
+	store.EXPECT().ListInstanceUsagePendingEgress(mock.Anything, mock.Anything, mock.Anything, mock.Anything, egressBatchSize).Return(nil, nil).Maybe()
 	require.NoError(t, w.Start())
 	require.NoError(t, w.Stop())
 	require.NoError(t, w.Stop())
+}
+
+func TestMeasureEgress(t *testing.T) {
+	store := dbMocks.NewStore(t)
+	provider := newPricedProvider(t)
+	unsupported := commonMocks.NewProvider(t)
+	w := NewWorker(context.Background(), store, map[string]common.Provider{"gcp": provider, "lxd": unsupported})
+	now := time.Date(2026, 10, 2, 12, 0, 0, 0, time.UTC)
+	w.now = func() time.Time { return now }
+
+	started := now.Add(-2 * time.Hour)
+	ended := now.Add(-30 * time.Minute)
+	running := testUsage("running", "f")
+	running.ProviderID = "us-east4-a/runner-running"
+	running.StartedAt = &started
+	done := testUsage("done", "f")
+	done.ProviderID = "us-east4-a/runner-done"
+	done.StartedAt = &started
+	done.EndedAt = &ended
+	failing := testUsage("failing", "f")
+	failing.ProviderID = "us-east4-a/runner-failing"
+	failing.StartedAt = &started
+	failing.EndedAt = &ended
+	noEgress := testUsage("no-egress", "f")
+	noEgress.ProviderName = "lxd"
+	noEgress.StartedAt = &started
+
+	store.EXPECT().ListInstanceUsagePendingEgress(mock.Anything, now.Add(-egressRefresh), now.Add(-egressSettleDelay), now.Add(-retryErrorsAfter), egressBatchSize).
+		Return([]params.InstanceUsage{running, done, failing, noEgress}, nil).Once()
+
+	egress := commonParams.InstanceEgress{Currency: "USD", Cost: 0.1}
+	// Running: measured up to now, not final.
+	provider.EgressEstimator.EXPECT().GetInstanceEgress(mock.Anything, "us-east4-a/runner-running",
+		started.Add(-egressWindowMargin), now, mock.Anything).Return(egress, nil).Once()
+	store.EXPECT().SetInstanceUsageEgress(mock.Anything, "running", mock.MatchedBy(func(p params.SetInstanceUsageEgressParams) bool {
+		return p.Status == params.UsageEgressOK && !p.Final && p.Egress != nil && p.Egress.Cost == 0.1
+	})).Return(nil).Once()
+	// Deleted: measured up to the end (plus margin), final.
+	provider.EgressEstimator.EXPECT().GetInstanceEgress(mock.Anything, "us-east4-a/runner-done",
+		started.Add(-egressWindowMargin), ended.Add(egressWindowMargin), mock.Anything).Return(egress, nil).Once()
+	store.EXPECT().SetInstanceUsageEgress(mock.Anything, "done", mock.MatchedBy(func(p params.SetInstanceUsageEgressParams) bool {
+		return p.Status == params.UsageEgressOK && p.Final
+	})).Return(nil).Once()
+	// Failure: retried later, not final.
+	provider.EgressEstimator.EXPECT().GetInstanceEgress(mock.Anything, "us-east4-a/runner-failing", mock.Anything, mock.Anything, mock.Anything).
+		Return(commonParams.InstanceEgress{}, errors.New("403")).Once()
+	store.EXPECT().SetInstanceUsageEgress(mock.Anything, "failing", mock.MatchedBy(func(p params.SetInstanceUsageEgressParams) bool {
+		return p.Status == params.UsageEgressError && !p.Final && p.Error == "403"
+	})).Return(nil).Once()
+	// Providers without egress support are not asked again.
+	store.EXPECT().SetInstanceUsageEgress(mock.Anything, "no-egress", mock.MatchedBy(func(p params.SetInstanceUsageEgressParams) bool {
+		return p.Status == params.UsageEgressUnsupported && p.Final
+	})).Return(nil).Once()
+
+	w.MeasureEgress()
+}
+
+func TestMeasureEgressNotSupportedByBinary(t *testing.T) {
+	store := dbMocks.NewStore(t)
+	provider := newPricedProvider(t)
+	w := NewWorker(context.Background(), store, map[string]common.Provider{"gcp": provider})
+	started := time.Now().Add(-time.Hour)
+	usage := testUsage("1", "f")
+	usage.ProviderID = "runner-1"
+	usage.StartedAt = &started
+
+	store.EXPECT().ListInstanceUsagePendingEgress(mock.Anything, mock.Anything, mock.Anything, mock.Anything, egressBatchSize).
+		Return([]params.InstanceUsage{usage}, nil).Once()
+	provider.EgressEstimator.EXPECT().GetInstanceEgress(mock.Anything, "runner-1", mock.Anything, mock.Anything, mock.Anything).
+		Return(commonParams.InstanceEgress{}, common.ErrEgressNotSupported).Once()
+	store.EXPECT().SetInstanceUsageEgress(mock.Anything, "1", mock.MatchedBy(func(p params.SetInstanceUsageEgressParams) bool {
+		return p.Status == params.UsageEgressUnsupported && p.Final
+	})).Return(nil).Once()
+	w.MeasureEgress()
 }

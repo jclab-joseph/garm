@@ -39,6 +39,9 @@ const summary: UsageSummary = {
 	time_zone: 'UTC',
 	currency: 'USD',
 	total_cost: 12.345,
+	compute_cost: 12.0,
+	egress_cost: 0.345,
+	external_bytes: 3 * 1024 ** 3,
 	billed_seconds: 5400,
 	instance_count: 3,
 	running_cost: 1.2,
@@ -78,6 +81,28 @@ const runningSpot: InstanceUsage = {
 	cost: 0.02,
 	range_billed_seconds: 4980,
 	range_cost: 0.02,
+	egress_status: 'ok',
+	egress_final: false,
+	egress_bytes: 3 * 1024 ** 3,
+	egress_external_bytes: 2 * 1024 ** 3,
+	egress_sent_bytes: 4 * 1024 ** 3,
+	egress_cost: 0.24,
+	egress_currency: 'USD',
+	range_egress_cost: 0.24,
+	egress: {
+		start: '2026-09-29T00:00:00Z',
+		end: '2026-09-29T02:00:00Z',
+		currency: 'USD',
+		sent_bytes: 4 * 1024 ** 3,
+		cost: 0.24,
+		flows: [
+			{ location_type: 'EXTERNAL', continent: 'America', country: 'United States', bytes: 2 * 1024 ** 3 },
+			{ location_type: 'GOOGLE_INTERNAL', bytes: 1024 ** 3 }
+		],
+		charges: [
+			{ destination: 'Americas', description: 'Network Internet Data Transfer Out from Virginia to Americas', sku: 'EGRESS-1', bytes: 2 * 1024 ** 3, unit_price: 0.12, cost: 0.24 }
+		]
+	},
 	job_repository: 'my-org/app',
 	job_name: 'build',
 	workflow_run_url: 'https://github.com/my-org/app/actions/runs/1',
@@ -176,6 +201,9 @@ describe('Cost page', () => {
 		expect(within(screen.getByTestId('card-standard')).getByText('$10.00')).toBeInTheDocument();
 		expect(within(screen.getByTestId('card-spot')).getByText('$2.35')).toBeInTheDocument();
 		expect(within(screen.getByTestId('card-running')).getByText('$1.20')).toBeInTheDocument();
+		expect(within(screen.getByTestId('card-egress')).getByText('$0.35')).toBeInTheDocument();
+		expect(within(screen.getByTestId('card-egress')).getByText('3.0 GiB to the internet')).toBeInTheDocument();
+		expect(within(screen.getByTestId('card-total')).getByText(/compute \$12\.00 · egress \$0\.35/)).toBeInTheDocument();
 		expect(within(screen.getByTestId('card-running')).getByText(/2 running instances/)).toBeInTheDocument();
 
 		expect(screen.getByTestId('usage-warnings')).toHaveTextContent('have no price yet');
@@ -204,7 +232,9 @@ describe('Cost page', () => {
 		expect(within(first).getByText('Running')).toBeInTheDocument();
 		expect(within(first).getByText('1h 23m')).toBeInTheDocument();
 		expect(within(first).getByText('$0.0123/h')).toBeInTheDocument();
-		expect(within(first).getByText('$0.02')).toBeInTheDocument();
+		// Cost includes the (prorated) egress
+		expect(within(first).getByText('$0.26')).toBeInTheDocument();
+		expect(within(first).getByText('2.0 GiB internet (so far)')).toBeInTheDocument();
 		// The job links to the job itself, with its workflow, branch, attempt and result
 		expect(within(first).getByRole('link', { name: 'my-org/app · build' })).toHaveAttribute(
 			'href',
@@ -245,6 +275,14 @@ describe('Cost page', () => {
 		expect(within(job).getByRole('link', { name: 'https://github.com/my-org/app/actions/runs/1/job/42' })).toBeInTheDocument();
 		expect(within(job).getByRole('link', { name: 'https://github.com/my-org/app/actions/runs/1' })).toBeInTheDocument();
 		expect(within(job).getByText(/CI · main · attempt 2/)).toBeInTheDocument();
+
+		// Egress by destination and its charges
+		const egress = within(detailsRow).getByTestId('usage-egress-details');
+		expect(within(egress).getByText(/for 2\.0 GiB to the internet/)).toBeInTheDocument();
+		expect(within(egress).getByText('United States, America')).toBeInTheDocument();
+		expect(within(egress).getByText('GOOGLE_INTERNAL')).toBeInTheDocument();
+		expect(within(egress).getByText('Americas')).toBeInTheDocument();
+		expect(within(egress).getByText('EGRESS-1')).toBeInTheDocument();
 	});
 
 	it('applies a preset and keeps it in the URL', async () => {

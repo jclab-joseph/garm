@@ -114,6 +114,30 @@ func TestSummarizeUsage(t *testing.T) {
 	require.InDelta(t, summary.TotalCost, dayTotal, 1e-9)
 }
 
+func TestSummarizeUsageEgress(t *testing.T) {
+	start := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	end := start.Add(48 * time.Hour)
+	price, egress := 1.0, 0.8
+	// 4h run, 2h before the range start: half of compute and egress count.
+	started, ended := start.Add(-2*time.Hour), start.Add(2*time.Hour)
+	u := usageRecord("a", "pool-a", "c4d-standard-8", commonParams.ProvisioningModelSpot, &price, &started, &ended)
+	u.EgressCost = &egress
+	u.EgressCurrency = "USD"
+	u.EgressExternalBytes = 1000
+
+	summary := SummarizeUsage([]params.InstanceUsage{u}, start, end, time.UTC, end)
+	require.Empty(t, summary.Warnings)
+	require.InDelta(t, 2, summary.ComputeCost, 1e-9)
+	require.InDelta(t, 0.4, summary.EgressCost, 1e-9)
+	require.InDelta(t, 2.4, summary.TotalCost, 1e-9)
+	require.InDelta(t, 500, summary.ExternalBytes, 1e-9)
+	require.InDelta(t, 2.4, summary.ByPool[0].Cost, 1e-9)
+	require.InDelta(t, 0.4, summary.ByPool[0].EgressCost, 1e-9)
+	require.InDelta(t, 2.4, summary.ByDay[0].Cost, 1e-9)
+	require.InDelta(t, 0.4, summary.ByDay[0].EgressCost, 1e-9)
+	require.Zero(t, summary.ByDay[1].Cost)
+}
+
 func TestSummarizeUsageEmpty(t *testing.T) {
 	start := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
 	summary := SummarizeUsage(nil, start, start.Add(72*time.Hour), time.UTC, start)

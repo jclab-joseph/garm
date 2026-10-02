@@ -229,6 +229,10 @@ type InstanceUsageStore interface {
 	// never looked up, or failed before retryErrorsBefore.
 	ListInstanceUsagePendingPrice(ctx context.Context, retryErrorsBefore time.Time, limit int) ([]params.InstanceUsage, error)
 	SetInstanceUsagePrice(ctx context.Context, usageID string, param params.SetInstanceUsagePriceParams) error
+	// ListInstanceUsagePendingEgress lists started instances whose egress
+	// needs measuring (see the SQL store for the rules).
+	ListInstanceUsagePendingEgress(ctx context.Context, refreshBefore, endedBefore, retryErrorsBefore time.Time, limit int) ([]params.InstanceUsage, error)
+	SetInstanceUsageEgress(ctx context.Context, usageID string, param params.SetInstanceUsageEgressParams) error
 	CloseOrphanedInstanceUsage(ctx context.Context) (int64, error)
 }
 

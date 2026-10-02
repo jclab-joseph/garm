@@ -22,7 +22,10 @@ import {
 	toRFC3339,
 	validateRange,
 	jobConclusionBadge,
-	workflowText
+	workflowText,
+	formatBytes,
+	egressText,
+	rangeTotalCost
 } from './usage.js';
 import type { InstanceUsage } from '$lib/api/client.js';
 
@@ -241,5 +244,31 @@ describe('job details', () => {
 		expect(workflowText({ workflow_name: 'CI', head_branch: 'main', run_attempt: 1 } as InstanceUsage)).toBe('CI · main');
 		expect(workflowText({ workflow_name: 'CI', run_attempt: 3 } as InstanceUsage)).toBe('CI · attempt 3');
 		expect(workflowText({} as InstanceUsage)).toBe('');
+	});
+});
+
+describe('egress', () => {
+	it('formats bytes with binary units', () => {
+		expect(formatBytes(0)).toBe('0 B');
+		expect(formatBytes(512)).toBe('512 B');
+		expect(formatBytes(1536)).toBe('1.5 KiB');
+		expect(formatBytes(3 * 1024 ** 3)).toBe('3.0 GiB');
+		expect(formatBytes(200 * 1024 ** 2)).toBe('200 MiB');
+		expect(formatBytes(undefined)).toBe('0 B');
+	});
+
+	it('describes the egress measurement', () => {
+		expect(egressText({ egress_status: 'ok', egress_final: true, egress_external_bytes: 1024 ** 3 } as InstanceUsage)).toBe('1.0 GiB internet');
+		expect(egressText({ egress_status: 'ok', egress_external_bytes: 0 } as InstanceUsage)).toBe('0 B internet (so far)');
+		expect(egressText({ egress_status: 'error' } as InstanceUsage)).toBe('Egress error');
+		expect(egressText({ egress_status: 'unsupported' } as InstanceUsage)).toBe('Egress n/a');
+		expect(egressText({ egress_status: 'pending', started_at: '2026-09-01T00:00:00Z' } as InstanceUsage)).toBe('Egress pending');
+		expect(egressText({ egress_status: 'pending' } as InstanceUsage)).toBe('');
+	});
+
+	it('adds egress to costs', () => {
+		expect(rangeTotalCost({ range_cost: 1, range_egress_cost: 0.25 } as InstanceUsage)).toBe(1.25);
+		expect(rangeTotalCost({ range_cost: 1 } as InstanceUsage)).toBe(1);
+		expect(costSoFarText({ price_status: 'ok', hourly_price: 1, cost: 1, egress_cost: 0.5, currency: 'USD' } as InstanceUsage)).toBe('$1.50');
 	});
 });

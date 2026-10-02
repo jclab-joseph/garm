@@ -28,6 +28,9 @@
 		modelBadge,
 		jobConclusionBadge,
 		workflowText,
+		rangeTotalCost,
+		formatBytes,
+		egressText,
 		modelCost,
 		modelCount,
 		presetRange,
@@ -333,12 +336,15 @@
 				</div>
 			{/if}
 
-			<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+			<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
 				<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-5" data-testid="card-total">
 					<p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total cost</p>
 					<p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">{formatCost(summary.total_cost || 0, currency)}</p>
 					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
 						{summary.instance_count || 0} {summary.instance_count === 1 ? 'instance' : 'instances'} · {formatHours(summary.billed_seconds)} billed
+					</p>
+					<p class="text-xs text-gray-500 dark:text-gray-400">
+						compute {formatCost(summary.compute_cost || 0, currency)} · egress {formatCost(summary.egress_cost || 0, currency)}
 					</p>
 				</div>
 				<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-5" data-testid="card-standard">
@@ -350,6 +356,11 @@
 					<p class="text-sm font-medium text-gray-500 dark:text-gray-400">Spot</p>
 					<p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">{formatCost(modelCost(summary, 'spot'), currency)}</p>
 					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{modelCount(summary, 'spot')} {modelCount(summary, 'spot') === 1 ? 'instance' : 'instances'}</p>
+				</div>
+				<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-5" data-testid="card-egress">
+					<p class="text-sm font-medium text-gray-500 dark:text-gray-400" title="Internet egress estimated from sampled VPC flow metrics; may be lower than billed">Egress (estimate)</p>
+					<p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-white tabular-nums">{formatCost(summary.egress_cost || 0, currency)}</p>
+					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{formatBytes(summary.external_bytes)} to the internet</p>
 				</div>
 				<div class="bg-white dark:bg-gray-800 shadow rounded-lg p-5" data-testid="card-running">
 					<p class="text-sm font-medium text-gray-500 dark:text-gray-400">Currently running</p>
@@ -408,7 +419,7 @@
 									{/if}
 								</div>
 								<div class="text-right shrink-0">
-									<p class="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{formatCost(run.range_cost ?? 0, recordCurrency(run))}</p>
+									<p class="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{formatCost(rangeTotalCost(run), recordCurrency(run))}</p>
 									<p class="text-xs text-gray-500 dark:text-gray-400 tabular-nums">{formatDuration(run.range_billed_seconds)}</p>
 								</div>
 							</div>
@@ -493,7 +504,12 @@
 										</span>
 									</td>
 									<td class="px-3 py-3 align-top whitespace-nowrap text-right tabular-nums text-gray-700 dark:text-gray-300">{formatDuration(run.range_billed_seconds)}</td>
-									<td class="px-3 py-3 align-top whitespace-nowrap text-right tabular-nums font-medium text-gray-900 dark:text-white">{formatCost(run.range_cost ?? 0, recordCurrency(run))}</td>
+									<td class="px-3 py-3 align-top whitespace-nowrap text-right tabular-nums" title="compute {formatCost(run.range_cost ?? 0, recordCurrency(run))} + egress {formatCost(run.range_egress_cost ?? 0, recordCurrency(run))}">
+										<span class="block font-medium text-gray-900 dark:text-white">{formatCost(rangeTotalCost(run), recordCurrency(run))}</span>
+										{#if egressText(run)}
+											<span class="block text-xs text-gray-500 dark:text-gray-400">{egressText(run)}</span>
+										{/if}
+									</td>
 									<td class="px-3 py-3 align-top whitespace-nowrap text-right tabular-nums text-gray-700 dark:text-gray-300">
 										{run.hourly_price !== undefined && run.hourly_price !== null ? `${formatHourlyPrice(run.hourly_price, recordCurrency(run))}/h` : '—'}
 									</td>
@@ -646,6 +662,86 @@
 					<li>{warning}</li>
 				{/each}
 			</ul>
+		{/if}
+
+		{@render egressDetails(run)}
+	</div>
+{/snippet}
+
+{#snippet egressDetails(run: InstanceUsage)}
+	{@const cur = run.egress_currency || recordCurrency(run)}
+	<div class="space-y-2" data-testid="usage-egress-details">
+		<h3 class="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Egress</h3>
+		{#if run.egress_status === 'ok' && run.egress}
+			<p class="text-gray-900 dark:text-white">
+				{formatCost(run.egress_cost ?? 0, cur)} for {formatBytes(run.egress_external_bytes)} to the internet
+				· {formatBytes(run.egress_bytes)} in total{run.egress_sent_bytes ? ` (interface counter: ${formatBytes(run.egress_sent_bytes)})` : ''}
+				{#if !run.egress_final}<span class="text-gray-500 dark:text-gray-400">· so far, refreshed while the instance runs</span>{/if}
+			</p>
+			<p class="text-xs text-gray-500 dark:text-gray-400">
+				Estimated from sampled VPC flow metrics, without packet headers: may be lower than billed. Only internet traffic is priced.
+			</p>
+			<div class="overflow-x-auto">
+				<table class="min-w-full text-xs">
+					<thead>
+						<tr class="text-left text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+							<th scope="col" class="py-1 pr-4 font-medium">Destination</th>
+							<th scope="col" class="py-1 pr-4 font-medium">Location</th>
+							<th scope="col" class="py-1 font-medium text-right">Sent</th>
+						</tr>
+					</thead>
+					<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+						{#each run.egress.flows || [] as flow}
+							<tr>
+								<td class="py-1 pr-4 text-gray-900 dark:text-white whitespace-nowrap">{flow.location_type}</td>
+								<td class="py-1 pr-4 text-gray-700 dark:text-gray-300">{[flow.country, flow.continent].filter(Boolean).join(', ') || '—'}</td>
+								<td class="py-1 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">{formatBytes(flow.bytes)}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+			{#if run.egress.charges && run.egress.charges.length > 0}
+				<div class="overflow-x-auto">
+					<table class="min-w-full text-xs">
+						<thead>
+							<tr class="text-left text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+								<th scope="col" class="py-1 pr-4 font-medium">Billed as</th>
+								<th scope="col" class="py-1 pr-4 font-medium">SKU</th>
+								<th scope="col" class="py-1 pr-4 font-medium text-right">Sent</th>
+								<th scope="col" class="py-1 pr-4 font-medium text-right">Per GiB</th>
+								<th scope="col" class="py-1 font-medium text-right">Cost</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+							{#each run.egress.charges as charge}
+								<tr>
+									<td class="py-1 pr-4 max-w-[18rem] truncate text-gray-900 dark:text-white" title={charge.description}>{charge.destination}</td>
+									<td class="py-1 pr-4 font-mono text-gray-500 dark:text-gray-400 whitespace-nowrap">{charge.sku || '—'}</td>
+									<td class="py-1 pr-4 text-right tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatBytes(charge.bytes)}</td>
+									<td class="py-1 pr-4 text-right tabular-nums text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatHourlyPrice(charge.unit_price, cur)}</td>
+									<td class="py-1 text-right tabular-nums text-gray-900 dark:text-white whitespace-nowrap">{formatCost(charge.cost, cur)}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
+			{#if run.egress.warnings && run.egress.warnings.length > 0}
+				<ul class="list-disc pl-5 text-yellow-800 dark:text-yellow-200">
+					{#each run.egress.warnings as warning}
+						<li>{warning}</li>
+					{/each}
+				</ul>
+			{/if}
+		{:else if run.egress_status === 'error'}
+			<p class="text-red-700 dark:text-red-300">Egress measurement failed (retried): {run.egress_error}</p>
+		{:else if run.egress_status === 'unsupported'}
+			<p class="text-gray-500 dark:text-gray-400">The provider can't measure egress.</p>
+		{:else if run.started_at}
+			<p class="text-gray-500 dark:text-gray-400">Not measured yet. Deleted instances are measured a few minutes after they end.</p>
+		{:else}
+			<p class="text-gray-500 dark:text-gray-400">The instance never ran.</p>
 		{/if}
 	</div>
 {/snippet}

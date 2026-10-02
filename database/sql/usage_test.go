@@ -374,6 +374,86 @@ func (s *UsageTestSuite) TestPricing() {
 	s.Require().ErrorContains(s.Store.SetInstanceUsagePrice(s.adminCtx, uuid.NewString(), params.SetInstanceUsagePriceParams{Status: params.UsagePriceOK}), "not found")
 }
 
+func (s *UsageTestSuite) setEgressState(instance params.Instance, providerID string, checked *time.Time, status params.UsageEgressStatus) {
+	s.Require().NoError(s.Store.(*sqlDatabase).conn.Model(&InstanceUsage{}).
+		Where("instance_name = ?", instance.Name).
+		Updates(map[string]any{"provider_id": providerID, "egress_checked_at": checked, "egress_status": status}).Error)
+}
+
+func (s *UsageTestSuite) TestEgress() {
+	now := time.Now().UTC()
+	refreshBefore, endedBefore, retryBefore := now.Add(-15*time.Minute), now.Add(-5*time.Minute), now.Add(-10*time.Minute)
+	pending := func() []string {
+		usage, err := s.Store.ListInstanceUsagePendingEgress(s.adminCtx, refreshBefore, endedBefore, retryBefore, 10)
+		s.Require().NoError(err)
+		return usageNames(usage)
+	}
+
+	notStarted := s.createInstance("not-started")
+	s.Require().Equal(params.UsageEgressPending, s.usageOf(notStarted).EgressStatus)
+
+	// Running, never measured / measured recently / measured long ago.
+	fresh := s.createInstance("running-fresh")
+	s.setTimes(fresh, ptr(now.Add(-time.Hour)), nil)
+	s.setEgressState(fresh, "z/running-fresh", nil, params.UsageEgressPending)
+	recent := s.createInstance("running-recent")
+	s.setTimes(recent, ptr(now.Add(-2*time.Hour)), nil)
+	s.setEgressState(recent, "z/running-recent", ptr(now.Add(-time.Minute)), params.UsageEgressOK)
+	stale := s.createInstance("running-stale")
+	s.setTimes(stale, ptr(now.Add(-3*time.Hour)), nil)
+	s.setEgressState(stale, "z/running-stale", ptr(now.Add(-20*time.Minute)), params.UsageEgressOK)
+	// Ended: just now (metrics not settled) / a while ago.
+	justEnded := s.createInstance("just-ended")
+	s.setTimes(justEnded, ptr(now.Add(-time.Hour)), ptr(now.Add(-time.Minute)))
+	s.setEgressState(justEnded, "z/just-ended", ptr(now.Add(-2*time.Minute)), params.UsageEgressOK)
+	ended := s.createInstance("ended")
+	s.setTimes(ended, ptr(now.Add(-4*time.Hour)), ptr(now.Add(-time.Hour)))
+	s.setEgressState(ended, "z/ended", ptr(now.Add(-2*time.Minute)), params.UsageEgressOK)
+	// Failed recently: not retried yet.
+	failed := s.createInstance("failed")
+	s.setTimes(failed, ptr(now.Add(-4*time.Hour)), ptr(now.Add(-time.Hour)))
+	s.setEgressState(failed, "z/failed", ptr(now.Add(-time.Minute)), params.UsageEgressError)
+
+	s.Require().ElementsMatch([]string{"running-fresh", "running-stale", "ended"}, pending())
+
+	// Rows from before the egress columns existed have NULLs.
+	s.Require().NoError(s.Store.(*sqlDatabase).conn.Model(&InstanceUsage{}).
+		Where("instance_name = ?", "running-fresh").Update("egress_final", nil).Error)
+	s.Require().ElementsMatch([]string{"running-fresh", "running-stale", "ended"}, pending())
+
+	usage, err := s.Store.ListAllInstanceUsage(s.adminCtx, params.InstanceUsageFilter{InstanceName: "ended"})
+	s.Require().NoError(err)
+	egress := &commonParams.InstanceEgress{
+		Currency:  "USD",
+		SentBytes: 5000,
+		Flows: []commonParams.EgressFlow{
+			{LocationType: "EXTERNAL", Continent: "America", Country: "United States", Bytes: 3000},
+			{LocationType: "GOOGLE_INTERNAL", Bytes: 1000},
+		},
+		Charges: []commonParams.EgressCharge{{Destination: "Americas", Bytes: 3000, UnitPrice: 0.12, Cost: 0.25}},
+		Cost:    0.25,
+	}
+	s.Require().NoError(s.Store.SetInstanceUsageEgress(s.adminCtx, usage[0].ID, params.SetInstanceUsageEgressParams{
+		Status: params.UsageEgressOK, Final: true, Egress: egress,
+	}))
+	usage, err = s.Store.ListAllInstanceUsage(s.adminCtx, params.InstanceUsageFilter{InstanceName: "ended"})
+	s.Require().NoError(err)
+	got := usage[0]
+	s.Require().Equal(params.UsageEgressOK, got.EgressStatus)
+	s.Require().True(got.EgressFinal)
+	s.Require().Equal(int64(4000), got.EgressBytes)
+	s.Require().Equal(int64(3000), got.EgressExternalBytes)
+	s.Require().Equal(int64(5000), got.EgressSentBytes)
+	s.Require().Equal(0.25, *got.EgressCost)
+	s.Require().Equal("USD", got.EgressCurrency)
+	s.Require().Equal(egress, got.Egress)
+
+	// Final measurements are not repeated.
+	s.Require().ElementsMatch([]string{"running-fresh", "running-stale"}, pending())
+
+	s.Require().ErrorContains(s.Store.SetInstanceUsageEgress(s.adminCtx, uuid.NewString(), params.SetInstanceUsageEgressParams{Status: params.UsageEgressOK}), "not found")
+}
+
 func (s *UsageTestSuite) TestCloseOrphanedInstanceUsage() {
 	kept := s.createInstance("kept")
 	orphan := s.createInstance("orphan")
@@ -428,6 +508,13 @@ func TestUsageMigrationBackfill(t *testing.T) {
 	}
 	if len(usage) != len(instances) {
 		t.Fatalf("expected %d usage records, got %d", len(instances), len(usage))
+	}
+	var nullEgress int64
+	if err := conn.Model(&InstanceUsage{}).Where("egress_final IS NULL OR egress_status <> ?", params.UsageEgressPending).Count(&nullEgress).Error; err != nil {
+		t.Fatal(err)
+	}
+	if nullEgress != 0 {
+		t.Fatalf("%d upgraded usage records are not pending egress measurement", nullEgress)
 	}
 	byInstance := map[uuid.UUID]InstanceUsage{}
 	for _, u := range usage {

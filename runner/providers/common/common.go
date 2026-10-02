@@ -42,22 +42,30 @@ func ValidateResult(inst commonParams.ProviderInstance) error {
 	return nil
 }
 
-// unsupportedPriceMarkers are printed by provider binaries (built with
-// garm-provider-common) that do not know the GetInstancePrice command.
-var unsupportedPriceMarkers = []string{
+// unsupportedMarkers are printed by provider binaries (built with
+// garm-provider-common) that do not know an optional command.
+var unsupportedMarkers = []string{
 	"unknown GARM_COMMAND",
 	"invalid command",
 	"does not support GetInstancePrice",
+	"does not support GetInstanceEgress",
+}
+
+func isUnsupportedCommand(err error) bool {
+	for _, marker := range unsupportedMarkers {
+		if strings.Contains(err.Error(), marker) {
+			return true
+		}
+	}
+	return false
 }
 
 // PriceResultFromExec decodes the output of the GetInstancePrice command.
 // Providers that don't support the command yield runnerCommon.ErrPriceNotSupported.
 func PriceResultFromExec(out []byte, execErr error) (commonParams.InstancePrice, error) {
 	if execErr != nil {
-		for _, marker := range unsupportedPriceMarkers {
-			if strings.Contains(execErr.Error(), marker) {
-				return commonParams.InstancePrice{}, fmt.Errorf("%w: %s", runnerCommon.ErrPriceNotSupported, execErr)
-			}
+		if isUnsupportedCommand(execErr) {
+			return commonParams.InstancePrice{}, fmt.Errorf("%w: %s", runnerCommon.ErrPriceNotSupported, execErr)
 		}
 		return commonParams.InstancePrice{}, garmErrors.NewProviderError("provider binary returned error: %s", execErr)
 	}
@@ -72,4 +80,26 @@ func PriceResultFromExec(out []byte, execErr error) (commonParams.InstancePrice,
 		return commonParams.InstancePrice{}, garmErrors.NewProviderError("invalid hourly price %v", price.HourlyPrice)
 	}
 	return price, nil
+}
+
+// EgressResultFromExec decodes the output of the GetInstanceEgress command.
+// Providers that don't support the command yield runnerCommon.ErrEgressNotSupported.
+func EgressResultFromExec(out []byte, execErr error) (commonParams.InstanceEgress, error) {
+	if execErr != nil {
+		if isUnsupportedCommand(execErr) {
+			return commonParams.InstanceEgress{}, fmt.Errorf("%w: %s", runnerCommon.ErrEgressNotSupported, execErr)
+		}
+		return commonParams.InstanceEgress{}, garmErrors.NewProviderError("provider binary returned error: %s", execErr)
+	}
+	var egress commonParams.InstanceEgress
+	if err := json.Unmarshal(out, &egress); err != nil {
+		return commonParams.InstanceEgress{}, garmErrors.NewProviderError("failed to decode response from binary: %s", err)
+	}
+	if egress.Cost < 0 || math.IsNaN(egress.Cost) || math.IsInf(egress.Cost, 0) {
+		return commonParams.InstanceEgress{}, garmErrors.NewProviderError("invalid egress cost %v", egress.Cost)
+	}
+	if egress.Cost > 0 && egress.Currency == "" {
+		return commonParams.InstanceEgress{}, garmErrors.NewProviderError("missing currency in egress")
+	}
+	return egress, nil
 }
